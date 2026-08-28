@@ -11,13 +11,13 @@
 
   let index=Math.max(0,Math.min(TRACKS.length-1,Number(localStorage.getItem(TRACK_KEY))||0));
   let muted=localStorage.getItem(MUTE_KEY)==='1';
-  let unlocked=false;
+  let started=false;
   let hiddenPause=false;
   let consecutiveErrors=0;
 
   const audio=document.createElement('audio');
   audio.id='fh-music-audio';
-  audio.preload='metadata';
+  audio.preload='none';
   audio.volume=VOLUME;
   audio.playsInline=true;
   audio.setAttribute('aria-hidden','true');
@@ -27,11 +27,13 @@
   function setTrack(i,autoplay=false){
     index=(i+TRACKS.length)%TRACKS.length;
     localStorage.setItem(TRACK_KEY,String(index));
-    audio.src=TRACKS[index];
-    audio.dataset.track=String(index+1);
-    audio.load();
+    if(audio.src!==new URL(TRACKS[index],location.href).href){
+      audio.src=TRACKS[index];
+      audio.dataset.track=String(index+1);
+      audio.load();
+    }
     updateButton();
-    if(autoplay&&!muted&&unlocked) audio.play().catch(()=>{});
+    if(autoplay&&!muted&&started)audio.play().catch(()=>{});
   }
 
   function next(){
@@ -44,9 +46,9 @@
     if(!b)return;
     b.textContent='♪';
     b.classList.toggle('is-muted',muted);
-    b.setAttribute('aria-pressed',String(!muted));
-    b.setAttribute('aria-label',muted?'Slå på musikken':'Slå av musikken');
-    b.title=muted?'Musikk av':'Musikk på';
+    b.setAttribute('aria-pressed',String(started&&!muted));
+    b.setAttribute('aria-label',!started?'Start musikken':muted?'Slå på musikken':'Slå av musikken');
+    b.title=!started?'Start musikk':muted?'Musikk av':'Musikk på';
   }
 
   function ensureButton(){
@@ -57,13 +59,19 @@
     b.className='fh-music';
     b.addEventListener('pointerdown',e=>e.stopPropagation());
     b.addEventListener('click',e=>{
+      e.preventDefault();
       e.stopPropagation();
-      unlocked=true;
+      if(!started){
+        started=true;
+        muted=false;
+        localStorage.setItem(MUTE_KEY,'0');
+        setTrack(index,true);
+        return;
+      }
       muted=!muted;
       localStorage.setItem(MUTE_KEY,muted?'1':'0');
-      if(muted){
-        audio.pause();
-      }else{
+      if(muted)audio.pause();
+      else{
         audio.volume=VOLUME;
         audio.play().catch(()=>{});
       }
@@ -86,45 +94,27 @@
     document.head.appendChild(s);
   }
 
-  function unlock(){
-    if(muted)return;
-    unlocked=true;
-    audio.volume=VOLUME;
-    audio.play().then(removeUnlockListeners).catch(()=>{});
-  }
-
-  function removeUnlockListeners(){
-    document.removeEventListener('pointerdown',unlock,true);
-    document.removeEventListener('touchend',unlock,true);
-    document.removeEventListener('keydown',unlock,true);
-  }
-
   audio.addEventListener('ended',next);
   audio.addEventListener('playing',()=>{consecutiveErrors=0;audio.dataset.state='playing';updateButton()});
-  audio.addEventListener('pause',()=>{audio.dataset.state='paused'});
+  audio.addEventListener('pause',()=>{audio.dataset.state='paused';updateButton()});
   audio.addEventListener('error',()=>{
-    if(consecutiveErrors>=TRACKS.length-1){audio.dataset.state='error';return;}
+    if(!started||consecutiveErrors>=TRACKS.length-1){audio.dataset.state='error';return;}
     consecutiveErrors+=1;
-    setTrack(index+1,!muted&&unlocked);
+    setTrack(index+1,!muted);
   });
 
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden){
       if(!audio.paused){hiddenPause=true;audio.pause();}
-    }else if(hiddenPause&&!muted&&unlocked){
+    }else if(hiddenPause&&!muted&&started){
       hiddenPause=false;
       audio.play().catch(()=>{});
     }
   });
 
   const run=()=>{ensureStyle();ensureButton()};
-  setTrack(index,false);
   run();
   new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true});
 
-  document.addEventListener('pointerdown',unlock,true);
-  document.addEventListener('touchend',unlock,true);
-  document.addEventListener('keydown',unlock,true);
-
-  window.__finnHaraldMusic={audio,tracks:TRACKS,get muted(){return muted},get track(){return index+1}};
+  window.__finnHaraldMusic={audio,tracks:TRACKS,get muted(){return muted},get track(){return index+1},get started(){return started}};
 })();
