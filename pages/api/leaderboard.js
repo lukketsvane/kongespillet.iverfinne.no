@@ -44,6 +44,8 @@ function init() {
     );
     CREATE INDEX IF NOT EXISTS finn_harald_leaderboard_rank_idx
       ON finn_harald_leaderboard (age DESC, score DESC, streak DESC, achieved_at ASC, player_id ASC);
+    ALTER TABLE finn_harald_leaderboard ENABLE ROW LEVEL SECURITY;
+    REVOKE ALL ON TABLE finn_harald_leaderboard FROM anon, authenticated;
   `);
   return initPromise;
 }
