@@ -1,14 +1,34 @@
 (()=>{
-  // Embedded or same-origin only: no remote placeholders, no broken image boxes.
-  const assets=[...new Set(window.__FH_CROWD||[])].filter(src=>
+  const rawAssets=[...new Set(window.__FH_CROWD||[])].filter(src=>
     typeof src==='string' && (src.startsWith('data:image/webp;base64,') || src.startsWith('/'))
   );
-  if(!assets.length)return;
+  if(!rawAssets.length)return;
+
+  // Convert embedded data URLs once, then let every crowd <img> share the same Blob URLs.
+  // This drops the large base64 strings from the long-lived JS heap and gives Safari one cache key per figure.
+  const blobUrls=[];
+  function sharedUrl(src){
+    if(!src.startsWith('data:image/webp;base64,'))return src;
+    try{
+      const b64=src.slice(src.indexOf(',')+1);
+      const binary=atob(b64);
+      const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      const url=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}));
+      blobUrls.push(url);
+      return url;
+    }catch{
+      return src;
+    }
+  }
+  const assets=rawAssets.map(sharedUrl);
+  rawAssets.length=0;
+  if(Array.isArray(window.__FH_CROWD))window.__FH_CROWD.length=0;
 
   const HARALD=[
     '/game-assets/harald/01_baby_harald.png','/game-assets/harald/02_child_harald.png','/game-assets/harald/03_young_prince.png','/game-assets/harald/04_gala_uniform.png','/game-assets/harald/05_wave.png','/game-assets/harald/06_speech_podium.png','/game-assets/harald/07_walk_left.png','/game-assets/harald/08_walk_right.png','/game-assets/harald/09_worried.png','/game-assets/harald/10_happy.png','/game-assets/harald/11_rubber_boots.png','/game-assets/harald/12_with_cane.png','/game-assets/harald/13_old_with_cane.png','/game-assets/harald/14_balcony_wave.png','/game-assets/harald/15_in_sira.png','/game-assets/harald/16_reading_newspaper.png','/game-assets/harald/17_victory_pose.png','/game-assets/harald/18_game_over.png'
   ];
-  const UI=['/game-assets/ui/crown.png','/game-assets/ui/flag.png','/game-assets/ui/cane.png','/game-assets/ui/rubber_boots.png','/game-assets/ui/microphone.png'];
+  const UI=['/game-assets/ui/crown.png'];
 
   function hash(s){
     let h=2166136261;
@@ -19,7 +39,7 @@
     return h>>>0;
   }
 
-  // Three decode workers keeps startup predictable on iPhone while still warming everything early.
+  // Warm every asset, but keep decode concurrency low enough for iOS Safari.
   function preload(){
     if(window.__FH_ASSET_PRELOAD)return;
     const queue=[...new Set([...assets,...HARALD,...UI])];
@@ -46,7 +66,7 @@
         });
       }
     };
-    state.promise=Promise.all(Array.from({length:Math.min(3,queue.length)},worker)).then(()=>{
+    state.promise=Promise.all(Array.from({length:Math.min(2,queue.length)},worker)).then(()=>{
       state.done=true;
       document.documentElement.dataset.fhAssetsReady='1';
       return state;
@@ -60,8 +80,6 @@
   }
 
   function applyOne(img,i){
-    if(img.classList.contains('is-prop')&&!img.classList.contains('fh-real-crowd'))return;
-
     const current=img.getAttribute('src')||'';
     if(!img.dataset.fhCrowdOriginal){
       img.dataset.fhCrowdOriginal=img.dataset.originalSprite || current;
@@ -73,6 +91,7 @@
     if(!Number.isFinite(n))n=chooseAsset(img,i);
     n=((n%assets.length)+assets.length)%assets.length;
 
+    // Every crowd slot is a person now. Old origin "props" are deliberately replaced too.
     img.classList.add('is-prop','fh-real-crowd');
     img.dataset.fhCrowdAsset=String(n);
     img.dataset.fhReady='0';
@@ -82,6 +101,7 @@
     const reveal=()=>{
       img.dataset.fhReady='1';
       img.classList.add('fh-ready-crowd');
+      img.style.visibility='visible';
       img.onload=img.onerror=null;
     };
     const retry=()=>{
@@ -96,7 +116,7 @@
     };
 
     img.classList.remove('fh-ready-crowd');
-    img.style.visibility='visible';
+    img.style.visibility='hidden';
     img.onload=reveal;
     img.onerror=retry;
     if(current!==assets[n])img.src=assets[n];
@@ -113,11 +133,11 @@
     document.querySelectorAll('.game-footer>p,.first-instruction').forEach(el=>el.remove());
   }
 
-  // Preserve the base game's crowd ramp. Difficulty gets a cheap composited scale only;
-  // never create extra runtime image nodes.
+  // Difficulty comes from the native crowd ramp plus a cheap composited target scale.
+  // No extra runtime image nodes are ever created.
   function tuneDifficulty(){
     const age=Math.max(0,Number(document.querySelector('.age-lockup strong')?.textContent)||0);
-    const scale=age===0?1:Math.max(.82,1-Math.log2(age+1)*.026);
+    const scale=age===0?1:Math.max(.78,1-Math.log2(age+1)*.03);
     document.documentElement.style.setProperty('--fh-target-scale',String(scale));
   }
 
@@ -128,9 +148,9 @@
     s.textContent=`
       .crowd-board{contain:layout paint style}
       .crowd-figure{backface-visibility:hidden;image-rendering:auto}
-      .crowd-figure.fh-real-crowd{opacity:0!important;transition:opacity 60ms linear;will-change:auto}
+      .crowd-figure.fh-real-crowd{opacity:0!important;transition:opacity 45ms linear;will-change:auto}
       .crowd-figure.fh-real-crowd.fh-ready-crowd{opacity:1!important}
-      .harald-target{scale:var(--fh-target-scale,1)}
+      .harald-target{scale:var(--fh-target-scale,1);transform-origin:center}
       .game-footer{grid-template-columns:auto auto!important;justify-content:space-between!important}
       .game-footer>p,.first-instruction{display:none!important}
       .game-footer .record{justify-self:end}
@@ -173,6 +193,12 @@
       window.setTimeout(schedule,280);
     }
   },true);
+
+  window.addEventListener('pagehide',()=>{
+    observer.disconnect();
+    // Blob URLs intentionally live for the page lifetime and are released only when leaving it.
+    blobUrls.forEach(url=>URL.revokeObjectURL(url));
+  },{once:true});
 
   window.__FH_CROWD_RUNTIME={assets,preload:window.__FH_ASSET_PRELOAD,schedule};
 })();
