@@ -3,12 +3,12 @@
   "alias": ["kongespillet.iverfinne.no"],
   "routes": [
     {
-      "src": "/",
-      "dest": "/shell.html"
+      "src": "/assets/page-DLX_mFFG.js",
+      "dest": "/enhanced/page-DLX_mFFG.js"
     },
     {
-      "src": "/__origin",
-      "dest": "https://finn-harald.iver-raknes-finne.chatgpt.site/"
+      "src": "/origin-assets/(.*)",
+      "dest": "https://finn-harald.iver-raknes-finne.chatgpt.site/assets/$1"
     },
     {
       "handle": "filesystem"
