@@ -1,10 +1,25 @@
 import { Pool } from 'pg';
 
-const connectionString =
+const rawConnectionString =
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_PRISMA_URL ||
   process.env.POSTGRES_URL_NON_POOLING;
 
+function normalizeConnectionString(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    url.searchParams.delete('sslmode');
+    url.searchParams.delete('sslcert');
+    url.searchParams.delete('sslkey');
+    url.searchParams.delete('sslrootcert');
+    return url.toString();
+  } catch {
+    return value;
+  }
+}
+
+const connectionString = normalizeConnectionString(rawConnectionString);
 const globalPg = globalThis;
 const pool = connectionString
   ? (globalPg.__finnHaraldPool ||= new Pool({
@@ -143,7 +158,7 @@ export default async function handler(req, res) {
     console.error('leaderboard error', error);
     return res.status(503).json({
       error: 'Leaderboard unavailable',
-      code: connectionString ? 'database_error' : 'missing_database_env'
+      code: connectionString ? (error?.code || 'database_error') : 'missing_database_env'
     });
   }
 }
