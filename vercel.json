@@ -1,21 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "alias": ["kongespillet.iverfinne.no"],
-  "routes": [
-    {
-      "src": "/assets/page-DLX_mFFG.js",
-      "dest": "/enhanced/page-DLX_mFFG.js"
-    },
-    {
-      "src": "/origin-assets/(.*)",
-      "dest": "https://finn-harald.iver-raknes-finne.chatgpt.site/assets/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "https://finn-harald.iver-raknes-finne.chatgpt.site/$1"
-    }
-  ]
+  "alias": ["kongespillet.iverfinne.no"]
 }
