@@ -2,11 +2,16 @@
   "name": "finn-harald",
   "version": "1.0.0",
   "private": true,
-  "description": "Finn Harald! — eit leite-spel der folkemengda blir teikna i kode og trekt på nytt kvar runde.",
-  "type": "module",
+  "description": "Finn Harald! — proxied to the published ChatGPT Site.",
   "scripts": {
-    "start": "python3 -m http.server 4173",
+    "build": "next build",
+    "start": "next start",
     "playtest": "node tools/playtest.mjs"
+  },
+  "dependencies": {
+    "next": "15.5.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "playwright": "1.49.1"
