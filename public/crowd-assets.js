@@ -194,11 +194,7 @@
     }
   },true);
 
-  window.addEventListener('pagehide',()=>{
-    observer.disconnect();
-    // Blob URLs intentionally live for the page lifetime and are released only when leaving it.
-    blobUrls.forEach(url=>URL.revokeObjectURL(url));
-  },{once:true});
-
+  // Do not revoke Blob URLs on pagehide: iOS may restore the page from bfcache.
+  // The browser releases them when the document is actually discarded.
   window.__FH_CROWD_RUNTIME={assets,preload:window.__FH_ASSET_PRELOAD,schedule};
 })();
