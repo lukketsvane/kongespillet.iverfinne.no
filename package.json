@@ -9,7 +9,8 @@
   "scripts": {
     "build": "next build",
     "start": "next start",
-    "playtest": "node tools/playtest.mjs"
+    "playtest": "node tools/playtest.mjs",
+    "test:first-click": "node tools/first-click-smoke.mjs"
   },
   "dependencies": {
     "next": "15.5.21",

@@ -101,10 +101,6 @@
     else if(img.complete&&img.naturalWidth>0)reveal();
   }
 
-  function cleanUI(){
-    document.querySelectorAll('.game-footer>p,.first-instruction').forEach(el=>el.remove());
-  }
-
   function tuneDifficulty(){
     const age=Math.max(0,Number(document.querySelector('.age-lockup strong')?.textContent)||0);
     const scale=age===0?1:Math.max(.78,1-Math.log2(age+1)*.03);
@@ -140,8 +136,6 @@
   function run(){
     scheduled=false;
     style();
-    cleanUI();
-    document.querySelectorAll('.fh-extra-crowd').forEach(el=>el.remove());
     applyCrowd();
     tuneDifficulty();
   }
