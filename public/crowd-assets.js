@@ -1,5 +1,8 @@
 (()=>{
-  const assets=[...new Set(window.__FH_CROWD||[])];
+  // Keep only embedded/same-origin assets. Remote placeholders caused intermittent broken images on iOS.
+  const assets=[...new Set(window.__FH_CROWD||[])].filter(src=>
+    typeof src==='string' && (src.startsWith('data:image/webp;base64,') || src.startsWith('/'))
+  );
   if(!assets.length)return;
 
   const HARALD=[
@@ -16,14 +19,7 @@
     return h>>>0;
   }
 
-  function rng(seed){
-    let x=seed||1;
-    return()=>{
-      x^=x<<13;x^=x>>>17;x^=x<<5;
-      return(x>>>0)/4294967296;
-    };
-  }
-
+  // Warm the browser cache without blocking the game. Four workers avoids an iOS decode spike.
   function preload(){
     if(window.__FH_ASSET_PRELOAD)return;
     const queue=[...new Set([...assets,...HARALD,...UI])];
@@ -32,46 +28,86 @@
     const worker=async()=>{
       while(cursor<queue.length){
         const src=queue[cursor++];
-        try{
+        await new Promise(resolve=>{
           const img=new Image();
+          let settled=false;
+          const finish=ok=>{
+            if(settled)return;
+            settled=true;
+            ok?state.loaded++:state.failed++;
+            img.onload=img.onerror=null;
+            resolve();
+          };
           img.decoding='async';
+          img.onload=()=>finish(true);
+          img.onerror=()=>finish(false);
           img.src=src;
-          if(img.decode)await img.decode();
-          else await new Promise(resolve=>{img.onload=img.onerror=resolve});
-          state.loaded+=1;
-        }catch{
-          state.failed+=1;
-        }
+          if(img.complete)finish(img.naturalWidth>0);
+        });
       }
     };
-    state.promise=Promise.all(Array.from({length:Math.min(8,queue.length)},worker)).then(()=>{
+    state.promise=Promise.all(Array.from({length:Math.min(4,queue.length)},worker)).then(()=>{
       state.done=true;
       document.documentElement.dataset.fhAssetsReady='1';
       return state;
     });
   }
 
+  function chooseAsset(img,i){
+    const original=img.dataset.originalSprite || img.dataset.fhCrowdOriginal || img.getAttribute('src') || '';
+    const seed=`${original}|${img.style.left}|${img.style.top}|${i}`;
+    return hash(seed)%assets.length;
+  }
+
+  function applyOne(img,i){
+    if(img.classList.contains('is-prop')&&!img.classList.contains('fh-real-crowd'))return;
+
+    const current=img.getAttribute('src')||'';
+    if(!img.dataset.fhCrowdOriginal){
+      img.dataset.fhCrowdOriginal=img.dataset.originalSprite || current;
+    }
+
+    // Already on one of our safe assets.
+    if(img.dataset.fhReady==='1' && assets.includes(current))return;
+
+    let n=Number(img.dataset.fhCrowdAsset);
+    if(!Number.isFinite(n))n=chooseAsset(img,i);
+    n=((n%assets.length)+assets.length)%assets.length;
+
+    img.classList.add('is-prop','fh-real-crowd');
+    img.dataset.fhCrowdAsset=String(n);
+    img.dataset.fhReady='0';
+    img.decoding='async';
+    img.loading='eager';
+
+    const reveal=()=>{
+      img.dataset.fhReady='1';
+      img.classList.add('fh-ready-crowd');
+      img.onload=img.onerror=null;
+    };
+    const retry=()=>{
+      const next=(n+1)%assets.length;
+      img.dataset.fhCrowdAsset=String(next);
+      img.onload=reveal;
+      img.onerror=()=>{
+        img.style.visibility='hidden';
+        img.onload=img.onerror=null;
+      };
+      img.src=assets[next];
+    };
+
+    img.classList.remove('fh-ready-crowd');
+    img.style.visibility='visible';
+    img.onload=reveal;
+    img.onerror=retry;
+    if(current!==assets[n])img.src=assets[n];
+    else if(img.complete && img.naturalWidth>0)reveal();
+  }
+
   function applyCrowd(){
-    document.querySelectorAll('img.crowd-figure:not(.fh-extra-decoy)').forEach((img,i)=>{
-      if(img.classList.contains('is-prop')&&!img.classList.contains('fh-real-crowd'))return;
-
-      const current=img.getAttribute('src')||'';
-      const original=img.dataset.originalSprite||(!current.startsWith('data:image/')?current:'')||img.dataset.fhCrowdOriginal||'';
-      if(!original)return;
-
-      if(original!==img.dataset.fhCrowdOriginal){
-        img.dataset.fhCrowdOriginal=original;
-        delete img.dataset.fhCrowdAsset;
-      }
-
-      const seed=`${img.dataset.fhCrowdOriginal}|${img.style.left}|${img.style.top}|${i}`;
-      const n=hash(seed)%assets.length;
-      const target=assets[n];
-
-      img.classList.add('is-prop','fh-real-crowd');
-      img.dataset.fhCrowdAsset=String(n);
-      if(current!==target)img.setAttribute('src',target);
-    });
+    const board=document.querySelector('.crowd-board');
+    if(!board)return;
+    board.querySelectorAll('img.crowd-figure').forEach(applyOne);
   }
 
   function cleanUI(){
@@ -82,75 +118,17 @@
     return Math.max(0,Number(document.querySelector('.age-lockup strong')?.textContent)||0);
   }
 
-  function basePeople(board){
-    return board.querySelectorAll('img.crowd-figure.fh-real-crowd:not(.fh-extra-decoy),img.crowd-figure:not(.is-prop):not(.fh-extra-decoy)').length+1;
-  }
-
-  function harder(){
-    const board=document.querySelector('.crowd-board');
-    const target=board?.querySelector('.harald-target');
-    if(!board||!target)return;
-
+  // Make the search harder without creating extra DOM nodes. The original game already ramps crowd size strongly.
+  function tuneDifficulty(){
+    const target=document.querySelector('.crowd-board .harald-target');
+    if(!target)return;
     const age=getAge();
-    const targetLeft=target.style.left||'';
-    const targetTop=target.style.top||'';
-    const key=`${age}|${targetLeft}|${targetTop}`;
-
-    const currentWidth=parseFloat(target.style.width)||10;
-    const oldApplied=parseFloat(target.dataset.fhAppliedWidth||'');
-    let baseWidth=parseFloat(target.dataset.fhBaseWidth||'');
-    if(!Number.isFinite(baseWidth)||!Number.isFinite(oldApplied)||Math.abs(currentWidth-oldApplied)>.02){
-      baseWidth=currentWidth;
-      target.dataset.fhBaseWidth=String(baseWidth);
-    }
-    const targetFactor=age===0?1:Math.max(.68,1-Math.min(.32,Math.log2(age+1)*.045));
-    const nextWidth=Math.max(3.8,baseWidth*targetFactor);
-    target.dataset.fhAppliedWidth=String(nextWidth);
-    if(Math.abs(currentWidth-nextWidth)>.02)target.style.width=`${nextWidth}%`;
-
-    const originals=[...board.querySelectorAll('img.crowd-figure.fh-real-crowd:not(.fh-extra-decoy)')];
-    const heights=originals.map(el=>parseFloat(el.style.height)).filter(Number.isFinite).sort((a,b)=>a-b);
-    const median=heights.length?heights[Math.floor(heights.length/2)]:14;
-    const extra=age===0?0:Math.min(110,Math.floor(age*1.15+Math.sqrt(age)*2.5));
-
-    let holder=board.querySelector('.fh-extra-crowd');
-    if(!holder){
-      holder=document.createElement('div');
-      holder.className='fh-extra-crowd';
-      holder.setAttribute('aria-hidden','true');
-      board.insertBefore(holder,target);
-    }
-
-    if(holder.dataset.round!==key||Number(holder.dataset.count)!==extra){
-      holder.dataset.round=key;
-      holder.dataset.count=String(extra);
-      holder.replaceChildren();
-      const random=rng(hash(`harder|${key}`));
-      const frag=document.createDocumentFragment();
-      for(let i=0;i<extra;i++){
-        const img=document.createElement('img');
-        const x=3.5+random()*93;
-        const y=5+random()*90;
-        const h=Math.max(6.2,median*(.72+random()*.52));
-        const front=age>28&&random()<Math.min(.11,age/900);
-        img.alt='';
-        img.draggable=false;
-        img.src=assets[Math.floor(random()*assets.length)];
-        img.className='crowd-figure is-prop fh-real-crowd fh-extra-decoy';
-        img.style.left=`${x}%`;
-        img.style.top=`${y}%`;
-        img.style.height=`${h}%`;
-        img.style.zIndex=String(front?145+Math.floor(random()*15):10+Math.round(y));
-        img.style.transform=`translate(-50%, -50%) rotate(${(-5+random()*10).toFixed(2)}deg) scaleX(${random()<.5?-1:1})`;
-        frag.appendChild(img);
-      }
-      holder.appendChild(frag);
-    }
-
-    const total=basePeople(board)+extra;
-    const folk=document.querySelector('.game-footer .record strong');
-    if(folk&&folk.textContent!==String(total))folk.textContent=String(total);
-    board.setAttribute('aria-label',`Folkemengd med ${total} menneske. Finn og trykk på Harald.`);
+    const current=parseFloat(target.style.width)||10;
+    if(!target.dataset.fhBaseWidth)target.dataset.fhBaseWidth=String(current);
+    const base=parseFloat(target.dataset.fhBaseWidth)||current;
+    const factor=age===0?1:Math.max(.72,1-Math.log2(age+1)*.042);
+    const width=Math.max(4.1,base*factor);
+    if(Math.abs(current-width)>.03)target.style.width=`${width}%`;
   }
 
   function style(){
@@ -158,29 +136,40 @@
     const s=document.createElement('style');
     s.id='fh-crowd-style';
     s.textContent=`
-      .crowd-figure.is-prop.fh-real-crowd{opacity:1!important}
-      .fh-extra-crowd{position:absolute;inset:0;pointer-events:none}
-      .fh-extra-crowd .fh-extra-decoy{pointer-events:auto;user-select:none;-webkit-user-select:none}
+      .crowd-figure.fh-real-crowd{opacity:0!important;transition:opacity 70ms linear;will-change:auto}
+      .crowd-figure.fh-real-crowd.fh-ready-crowd{opacity:1!important}
       .game-footer{grid-template-columns:auto auto!important;justify-content:space-between!important}
       .game-footer>p,.first-instruction{display:none!important}
       .game-footer .record{justify-self:end}
+      .crowd-board{contain:layout paint style}
     `;
     document.head.appendChild(s);
   }
 
+  let scheduled=false;
   function run(){
+    scheduled=false;
     style();
     cleanUI();
     applyCrowd();
-    harder();
+    tuneDifficulty();
+  }
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(run);
   }
 
   preload();
-  run();
-  new MutationObserver(run).observe(document.documentElement,{
-    childList:true,
-    subtree:true,
-    attributes:true,
-    attributeFilter:['src','style']
+  schedule();
+
+  // Observe structural round changes only. Watching src/style created a self-triggering mutation storm.
+  const observer=new MutationObserver(schedule);
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden)schedule();
   });
+
+  window.__FH_CROWD_RUNTIME={assets,preload:window.__FH_ASSET_PRELOAD,schedule};
 })();

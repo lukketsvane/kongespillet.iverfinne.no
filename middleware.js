@@ -30,7 +30,6 @@ export async function middleware(request) {
       '<script src="/crowd-03.js" defer></script>',
       '<script src="/crowd-04.js" defer></script>',
       '<script src="/crowd-05.js" defer></script>',
-      '<script src="/crowd-placeholders.js" defer></script>',
       '<script src="/crowd-assets.js" defer></script>',
       '<script src="/enhance.js" defer></script>',
       '<script src="/usernames.js" defer></script>',
