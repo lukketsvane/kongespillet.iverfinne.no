@@ -24,11 +24,16 @@ export async function middleware(request) {
     if (!upstream.ok) return NextResponse.next();
 
     let html = await upstream.text();
-    const tag = '<script src="/enhance.js" defer></script>';
-    if (!html.includes('/enhance.js')) {
+    const tags = [
+      '<script src="/enhance.js" defer></script>',
+      '<script src="/usernames.js" defer></script>',
+    ].filter((tag) => !html.includes(tag.match(/src="([^"]+)/)?.[1] || ''));
+
+    if (tags.length) {
+      const injected = tags.join('');
       html = html.includes('</body>')
-        ? html.replace('</body>', `${tag}</body>`)
-        : `${html}${tag}`;
+        ? html.replace('</body>', `${injected}</body>`)
+        : `${html}${injected}`;
     }
 
     const headers = new Headers();
