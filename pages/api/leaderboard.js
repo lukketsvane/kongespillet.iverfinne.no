@@ -42,10 +42,20 @@ function init() {
       streak integer NOT NULL DEFAULT 0 CHECK (streak >= 0),
       achieved_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS finn_harald_players (
+      player_id text PRIMARY KEY,
+      display_name text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
     CREATE INDEX IF NOT EXISTS finn_harald_leaderboard_rank_idx
       ON finn_harald_leaderboard (age DESC, score DESC, streak DESC, achieved_at ASC, player_id ASC);
+    CREATE UNIQUE INDEX IF NOT EXISTS finn_harald_players_display_name_lower_uidx
+      ON finn_harald_players (lower(display_name));
     ALTER TABLE finn_harald_leaderboard ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE finn_harald_players ENABLE ROW LEVEL SECURITY;
     REVOKE ALL ON TABLE finn_harald_leaderboard FROM anon, authenticated;
+    REVOKE ALL ON TABLE finn_harald_players FROM anon, authenticated;
   `);
   return initPromise;
 }
@@ -56,6 +66,13 @@ function cleanId(value) {
   return id;
 }
 
+function cleanName(value) {
+  const name = String(value || '').trim();
+  if (name.length < 2 || name.length > 18) return null;
+  if (!/^[\p{L}\p{N}_-]+$/u.test(name)) return null;
+  return name;
+}
+
 function cleanInt(value, max) {
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
@@ -64,19 +81,22 @@ function cleanInt(value, max) {
 
 const rankedSql = `
   SELECT
-    player_id,
-    age,
-    score::text AS score,
-    streak,
+    l.player_id,
+    COALESCE(p.display_name, 'ANONYM') AS display_name,
+    l.age,
+    l.score::text AS score,
+    l.streak,
     ROW_NUMBER() OVER (
-      ORDER BY age DESC, score DESC, streak DESC, achieved_at ASC, player_id ASC
+      ORDER BY l.age DESC, l.score DESC, l.streak DESC, l.achieved_at ASC, l.player_id ASC
     )::int AS rank
-  FROM finn_harald_leaderboard
+  FROM finn_harald_leaderboard l
+  LEFT JOIN finn_harald_players p ON p.player_id = l.player_id
 `;
 
 function publicRow(row, playerId) {
   return {
     rank: Number(row.rank),
+    name: row.display_name || 'ANONYM',
     age: Number(row.age),
     score: Number(row.score),
     streak: Number(row.streak),
@@ -84,9 +104,22 @@ function publicRow(row, playerId) {
   };
 }
 
+async function profileFor(playerId) {
+  if (!playerId) return null;
+  const result = await pool.query(
+    `SELECT display_name FROM finn_harald_players WHERE player_id = $1 LIMIT 1`,
+    [playerId]
+  );
+  const row = result.rows[0];
+  return row ? { displayName: row.display_name } : null;
+}
+
 async function boardFor(playerId) {
-  const topResult = await pool.query(`WITH ranked AS (${rankedSql}) SELECT * FROM ranked WHERE rank <= 10 ORDER BY rank`);
-  const countResult = await pool.query(`SELECT COUNT(*)::int AS count FROM finn_harald_leaderboard`);
+  const [topResult, countResult, profile] = await Promise.all([
+    pool.query(`WITH ranked AS (${rankedSql}) SELECT * FROM ranked WHERE rank <= 10 ORDER BY rank`),
+    pool.query(`SELECT COUNT(*)::int AS count FROM finn_harald_leaderboard`),
+    profileFor(playerId),
+  ]);
 
   let player = null;
   let nearby = [];
@@ -109,10 +142,24 @@ async function boardFor(playerId) {
 
   return {
     total: Number(countResult.rows[0]?.count || 0),
+    profile,
     top: topResult.rows.map((row) => publicRow(row, playerId)),
     player: player ? publicRow(player, playerId) : null,
     nearby: nearby.map((row) => publicRow(row, playerId)),
   };
+}
+
+async function saveProfile(playerId, displayName) {
+  await pool.query(
+    `
+      INSERT INTO finn_harald_players (player_id, display_name, created_at, updated_at)
+      VALUES ($1, $2, now(), now())
+      ON CONFLICT (player_id) DO UPDATE SET
+        display_name = EXCLUDED.display_name,
+        updated_at = now()
+    `,
+    [playerId, displayName]
+  );
 }
 
 export default async function handler(req, res) {
@@ -122,6 +169,27 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       const playerId = cleanId(req.query.playerId);
+      return res.status(200).json(await boardFor(playerId));
+    }
+
+    if (req.method === 'PATCH') {
+      const playerId = cleanId(req.body?.playerId);
+      const displayName = cleanName(req.body?.displayName);
+      if (!playerId || !displayName) {
+        return res.status(400).json({
+          error: 'Invalid username',
+          code: 'invalid_username',
+          hint: 'Use 2–18 letters, numbers, _ or -',
+        });
+      }
+      try {
+        await saveProfile(playerId, displayName);
+      } catch (error) {
+        if (error?.code === '23505') {
+          return res.status(409).json({ error: 'Username is taken', code: 'username_taken' });
+        }
+        throw error;
+      }
       return res.status(200).json(await boardFor(playerId));
     }
 
@@ -154,13 +222,13 @@ export default async function handler(req, res) {
       return res.status(200).json(await boardFor(playerId));
     }
 
-    res.setHeader('Allow', 'GET, POST');
+    res.setHeader('Allow', 'GET, POST, PATCH');
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('leaderboard error', error);
     return res.status(503).json({
       error: 'Leaderboard unavailable',
-      code: connectionString ? (error?.code || 'database_error') : 'missing_database_env'
+      code: connectionString ? (error?.code || 'database_error') : 'missing_database_env',
     });
   }
 }
