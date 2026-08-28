@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grafiske ressursar — Finn Harald!</title>
+<title>Grafiske ressursar — Kong Harald</title>
 <link rel="stylesheet" href="./styles.css">
 <style>
   body { background: #efece4; }
@@ -12,6 +12,8 @@
   h1 { font-size: 40px; margin: 0 0 2px; text-align: center; }
   .sub { font-family: var(--serif); font-style: italic; text-align: center; margin: 0 0 18px; }
   h2 { font-size: 20px; border-bottom: 1px solid var(--rule); padding-bottom: 4px; margin: 26px 0 10px; }
+  h3.sub2 { font-family: var(--serif); font-weight: 500; font-size: 16px; margin: 16px 0 8px; }
+  code { font-size: 12px; background: #f0ece1; padding: 1px 4px; }
   .grid { display: flex; flex-wrap: wrap; gap: 10px; }
   figure { margin: 0; text-align: center; background: #fff; border: 1px solid rgba(29,27,24,.25); padding: 6px; }
   figcaption { font-family: var(--serif); font-size: 11px; color: var(--muted); margin-top: 4px; }
@@ -23,16 +25,20 @@
 <body>
 <div class="sheet">
   <h1>Grafiske ressursar</h1>
-  <p class="sub">Alt i spelet er teikna i kode. Ingen bilete blir lasta ned.</p>
+  <p class="sub">Handteikna ark skorne opp til sprites, og ei folkemengd generert i kode.</p>
   <p class="note">Kvar figur er ein liten spesifikasjon — hud, hår, frakk, hatt, positur — teikna med ein skjelvande blekkpenn, slik at ingen to i mengda er heilt like.</p>
 
-  <h2>Hovudrollene</h2>
+  <h2>Teikna ressursar frå arka</h2>
+  <p class="note">Dei fem ressurs-arka er skorne opp automatisk til <b id="artCount">0</b> einskilde
+  sprites med gjennomsiktig papir (<code>tools/extract_assets.py</code>). Desse er tinga du leitar
+  etter, farane og heile grensesnittet.</p>
+  <div class="grid" id="art"></div>
+
+  <h2>Folkemengda — teikna i kode</h2>
+  <h3 class="sub2">Hovudrollene</h3>
   <div class="grid" id="variants"></div>
 
-  <h2>Ting på lista</h2>
-  <div class="grid" id="targets"></div>
-
-  <h2>Lokkedyr og staffasje</h2>
+  <h2>Smått og staffasje i mengda</h2>
   <div class="grid" id="decoys"></div>
 
   <h2>Positurar</h2>
@@ -49,6 +55,23 @@
 
 <script type="module">
 import { makeRng } from './src/rng.js';
+
+// teikna ressursar frå manifestet
+const man = await fetch('./assets/manifest.json').then((r) => r.json());
+const artWrap = document.querySelector('#art');
+const order = ['objekt', 'fiende', 'folk', 'ui', 'hero'];
+const entries = Object.entries(man).sort(
+  (a, b) => order.indexOf(a[1].sheet) - order.indexOf(b[1].sheet) || a[0].localeCompare(b[0])
+);
+document.querySelector('#artCount').textContent = entries.length;
+for (const [name, meta] of entries) {
+  if (name === 'hero-banner') continue;
+  const fig = document.createElement('figure');
+  fig.innerHTML = `<img src="./assets/${name}.png" alt="${name}" style="max-width:110px;max-height:96px;object-fit:contain">
+    <figcaption>${name}</figcaption>`;
+  artWrap.appendChild(fig);
+}
+
 import { makePerson, drawPerson } from './src/people.js';
 import { drawProp } from './src/props.js';
 
@@ -76,21 +99,9 @@ const person = (variant, label, seed = 3, scale = 2.2) =>
     drawPerson(g, makeRng(seed + 1), makePerson(rng, { variant }), 55, 122, scale);
   });
 
-person('harald', 'Harald');
-person('sonja', 'Sonja');
-person('macarena', 'macarena');
-person('durek', 'sjaman Durek');
-person('ksv', 'KSV');
-person('presse', 'pressa');
+person('harald', 'Harald i mengda');
 
-const targets = ['krone', 'baat', 'flagg', 'rev', 'stokk', 'stovel', 'stovlar', 'mikrofon', 'note', 'sira'];
-for (const k of targets) {
-  cell(document.querySelector('#targets'), k, 110, 110, (g) => {
-    drawProp(g, makeRng(11), k, 55, k === 'sira' ? 78 : 92, k === 'sira' ? 1.6 : 2.2);
-  });
-}
-
-const decoys = ['blaabaat', 'danskflagg', 'sko', 'gklave', 'hund', 'ballong', 'is', 'veske', 'paraply', 'maake', 'tuba', 'gitar', 'blomsterkasse', 'fontene', 'bod'];
+const decoys = ['hund', 'rev', 'ballong', 'veske', 'maake', 'tuba', 'gitar', 'blomsterkasse', 'fontene', 'bod'];
 for (const k of decoys) {
   const big = ['blomsterkasse', 'fontene', 'bod'].includes(k);
   cell(document.querySelector('#decoys'), k, big ? 190 : 110, big ? 150 : 110, (g) => {
@@ -98,7 +109,7 @@ for (const k of decoys) {
   });
 }
 
-const poses = ['stand', 'walk', 'wave', 'point', 'pocket', 'both', 'macarena', 'camera', 'crystal', 'guard', 'bouquet'];
+const poses = ['stand', 'walk', 'wave', 'point', 'pocket', 'both'];
 for (const pose of poses) {
   cell(document.querySelector('#poses'), pose, 100, 120, (g) => {
     const rng = makeRng(77);

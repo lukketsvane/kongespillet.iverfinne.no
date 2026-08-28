@@ -1,25 +1,28 @@
-// Kongespillet: FINN HARALD
-// Du er Kong Harald og har rota deg bort i din eigen folkemengd.
-// Finn deg sjølv og tinga på lista — og hugs å vinke, elles renn folkegunsten ut.
+// Kong Harald — vink eller gå under.
+// Du er kongen, bortkomen i di eiga folkemengd. Finn tinga dine, hald
+// folkekjærleiken og verdigheita oppe, og hugs å vinke når pressa knipsar.
 
 import { makeRng, randomSeed } from './rng.js';
 import { generateBoard, renderBoard, WORLD_W, WORLD_H, ITEMS } from './board.js';
-import { makePerson, drawPerson } from './people.js';
 import { itemIcon } from './icons.js';
 import { sfx, setMuted, isMuted } from './audio.js';
-import { line, shape, blob } from './draw.js';
+import { loadAssets, drawArt, artUrl, artWidth, IMG } from './assets.js';
 
 const $ = (sel) => document.querySelector(sel);
 
 const cv = $('#board');
 const ctx = cv.getContext('2d');
 
+const START_LIVES = 3;
+
 const state = {
-  phase: 'menu', // menu | play | clear | over
+  phase: 'lasting', // lasting | menu | play | pause | clear | over
   level: 1,
   score: 0,
-  best: Number(localStorage.getItem('finnharald.best') || 0),
-  pop: 72,
+  best: Number(localStorage.getItem('kongespelet.best') || 0),
+  folk: 72,
+  verd: 88,
+  lives: START_LIVES,
   combo: 0,
   seed: 0,
   board: null,
@@ -31,8 +34,8 @@ const state = {
   flash: 0,
   hints: 3,
   ring: null,
-  hazards: { press: null, durek: null, ksv: null },
-  timers: { press: 8, durek: 16, ksv: 24 },
+  hazards: { press: null, sjaman: null, vakt: null, storm: null },
+  timers: { press: 8, sjaman: 16, vakt: 24, storm: 20 },
   view: { x: 0, y: 0, scale: 1, min: 0.2, max: 2.4 },
   dpr: Math.min(2, window.devicePixelRatio || 1),
 };
@@ -88,44 +91,6 @@ function centerOn(wx, wy, scale) {
   clampView();
 }
 
-// --------------------------------------------------------------- sprites
-
-// Farane blir teikna éin gong til eit lite lerret og deretter berre flytta.
-function sprite(w, h, draw) {
-  const c = document.createElement('canvas');
-  c.width = Math.round(w * state.dpr);
-  c.height = Math.round(h * state.dpr);
-  const g = c.getContext('2d');
-  g.scale(state.dpr, state.dpr);
-  g.lineJoin = 'round';
-  g.lineCap = 'round';
-  draw(g);
-  return { canvas: c, w, h };
-}
-
-function personSprite(variant, seed, scale = 1) {
-  const rng = makeRng(seed);
-  const p = makePerson(rng, { variant });
-  const w = 90;
-  const h = p.h * scale + 20;
-  return {
-    ...sprite(w, h, (g) => drawPerson(g, makeRng(seed + 5), p, w / 2, h - 6, scale)),
-    anchorX: w / 2,
-    anchorY: h - 6,
-  };
-}
-
-function ksvSprite(count, seed = 9000) {
-  const w = count * 44 + 24;
-  const h = 74;
-  return sprite(w, h, (g) => {
-    for (let i = 0; i < count; i++) {
-      const rng = makeRng(seed + i * 131);
-      drawPerson(g, rng, makePerson(rng, { variant: 'ksv' }), 22 + i * 44, h - 6 + rng.range(-3, 3), 1.25);
-    }
-  });
-}
-
 // --------------------------------------------------------------- runde
 
 function newLevel(level, seed) {
@@ -137,14 +102,15 @@ function newLevel(level, seed) {
   state.combo = 0;
   state.waveEff = 1;
   state.ring = null;
-  state.hazards = { press: null, durek: null, ksv: null };
+  state.hazards = { press: null, sjaman: null, vakt: null, storm: null };
   state.timers = {
     press: Math.max(5, 11 - level * 0.6),
-    durek: level >= 2 ? 14 : 999,
-    ksv: level >= 3 ? 20 : 999,
+    sjaman: level >= 2 ? 15 : 999,
+    vakt: level >= 3 ? 22 : 999,
+    storm: level >= 2 ? 26 : 999,
   };
+  hideStorm();
   buildChecklist();
-  // På smale skjermar startar vi innzooma — heile plakaten er uleseleg på ein telefon.
   const { w: cw } = cssSize();
   state.view.scale = cw < 780 ? Math.max(state.view.min, cw / 620) : state.view.min;
   centerOn(WORLD_W / 2, WORLD_H / 2);
@@ -155,7 +121,9 @@ function newLevel(level, seed) {
 function startGame(seed) {
   state.phase = 'play';
   state.score = 0;
-  state.pop = 72;
+  state.folk = 72;
+  state.verd = 88;
+  state.lives = START_LIVES;
   state.hints = 3;
   newLevel(1, seed);
   hideOverlay();
@@ -163,23 +131,24 @@ function startGame(seed) {
 
 // --------------------------------------------------------------- sjekkliste
 
+function iconFor(key) {
+  return key === 'harald' ? itemIcon('harald') : artUrl(key);
+}
+
 function buildChecklist() {
   const wrap = $('#checklist');
   wrap.innerHTML = '';
   const counts = new Map();
   for (const t of state.board.targets) {
-    if (t.item === 'harald') continue;
+    if (t.item === 'harald' || t.kind === 'bonus') continue;
     counts.set(t.item, (counts.get(t.item) || 0) + 1);
   }
   const meta = new Map(ITEMS.map((i) => [i.key, i]));
 
-  const haraldEl = chip('harald', 'Harald sjølv');
-  haraldEl.classList.add('is-harald');
-  wrap.appendChild(haraldEl);
-
-  for (const [key, n] of counts) {
-    wrap.appendChild(chip(key, meta.get(key).label));
-  }
+  const h = chip('harald', 'Harald sjølv');
+  h.classList.add('is-harald');
+  wrap.appendChild(h);
+  for (const [key] of counts) wrap.appendChild(chip(key, meta.get(key).label));
   updateChecklist();
 }
 
@@ -187,7 +156,7 @@ function chip(key, label) {
   const el = document.createElement('div');
   el.className = 'chip';
   el.dataset.key = key;
-  el.innerHTML = `<span class="tick" aria-hidden="true"></span><img alt="" src="${itemIcon(key)}"><span class="lbl">${label}</span><span class="cnt"></span>`;
+  el.innerHTML = `<span class="tick" aria-hidden="true"></span><img alt="" src="${iconFor(key)}"><span class="lbl">${label}</span><span class="cnt"></span>`;
   return el;
 }
 
@@ -195,6 +164,7 @@ function updateChecklist() {
   if (!state.board) return;
   const byItem = new Map();
   for (const t of state.board.targets) {
+    if (t.kind === 'bonus') continue;
     const e = byItem.get(t.item) || { n: 0, f: 0 };
     e.n++;
     if (t.found) e.f++;
@@ -213,20 +183,44 @@ function updateChecklist() {
 function updateHud() {
   $('#lvl').textContent = state.level;
   $('#score').textContent = Math.round(state.score);
-  $('#best').textContent = Math.max(state.best, Math.round(state.score));
-  $('#popbar').style.width = Math.max(0, Math.min(100, state.pop)) + '%';
-  $('#popbar').classList.toggle('low', state.pop < 30);
+  $('#folkbar').style.width = Math.max(0, Math.min(100, state.folk)) + '%';
+  $('#verdbar').style.width = Math.max(0, Math.min(100, state.verd)) + '%';
+  $('#folkbar').classList.toggle('low', state.folk < 30);
+  $('#verdbar').classList.toggle('low', state.verd < 30);
   $('#hintBtn').textContent = `Hint (${state.hints})`;
   $('#hintBtn').disabled = state.hints <= 0 || state.phase !== 'play';
+
+  const lives = $('#lives');
+  if (lives.childElementCount !== START_LIVES) {
+    lives.innerHTML = '';
+    for (let i = 0; i < START_LIVES; i++) lives.appendChild(document.createElement('img'));
+  }
+  [...lives.children].forEach((el, i) => {
+    const want = artUrl(i < state.lives ? 'liv-full' : 'liv-tom');
+    if (el.getAttribute('src') !== want) el.src = want;
+    el.alt = '';
+  });
 }
 
 let toastT = null;
-function toast(msg, kind = '') {
+function toast(msg, kind = '', face = null) {
   const el = $('#toast');
-  el.textContent = msg;
+  el.innerHTML = (face ? `<img src="${artUrl(face)}" alt="">` : '') + `<span>${msg}</span>`;
   el.className = 'show ' + kind;
   clearTimeout(toastT);
-  toastT = setTimeout(() => (el.className = ''), 1700);
+  toastT = setTimeout(() => (el.className = ''), 1900);
+}
+
+let eventT = null;
+function eventPanel(kind, text, art) {
+  const el = $('#event');
+  el.innerHTML =
+    `<img class="bg" src="${artUrl(kind === 'ok' ? 'panel-ok' : 'panel-feil')}" alt="">` +
+    `<span>${text}</span>` +
+    (art ? `<img class="art" src="${artUrl(art)}" alt="">` : '');
+  el.className = 'show ' + kind;
+  clearTimeout(eventT);
+  eventT = setTimeout(() => (el.className = ''), 2300);
 }
 
 function showOverlay(html) {
@@ -242,24 +236,24 @@ function hideOverlay() {
 // --------------------------------------------------------------- vinking
 
 function doWave() {
-  if (state.phase === 'clear') {
-    nextLevel();
-    return;
-  }
+  if (state.phase === 'clear') return nextLevel();
   if (state.phase !== 'play') return;
   const now = state.levelTime;
-  if (now - state.waveT < 0.5) return;
+  if (now - state.waveT < 0.45) return;
   state.waveT = now;
   state.waveAnim = 1;
-  const gain = 13 * state.waveEff;
-  state.pop = Math.min(100, state.pop + gain);
-  state.waveEff = Math.max(0.12, state.waveEff * 0.55);
+  const eff = state.waveEff;
+  state.folk = Math.min(100, state.folk + 13 * eff);
+  state.waveEff = Math.max(0.12, eff * 0.55);
   sfx.wave();
-  if (gain < 4) toast('Folket ser at du vinkar på autopilot.', 'bad');
+  if (eff < 0.34) {
+    state.verd = Math.max(0, state.verd - 5);
+    toast('Han vinkar litt for ivrig no.', 'bad', 'skeptikar');
+  }
   updateHud();
 }
 
-function wavedRecently(win = 1.0) {
+function wavedRecently(win = 1.2) {
   return state.levelTime - state.waveT < win;
 }
 
@@ -267,73 +261,109 @@ function wavedRecently(win = 1.0) {
 
 function spawnPress() {
   const rng = makeRng(randomSeed());
-  const b = state.board;
-  const x = rng.range(120, WORLD_W - 120);
-  const y = rng.range(140, WORLD_H - 80);
-  state.hazards.press = { x, y, t: 0, warn: Math.max(1.1, 2.4 - state.level * 0.1), fired: false, spr: personSprite('presse', rng.int(1, 1e6), 1.15) };
+  state.hazards.press = {
+    x: rng.range(140, WORLD_W - 140),
+    y: rng.range(150, WORLD_H - 80),
+    t: 0,
+    warn: Math.max(1.2, 2.5 - state.level * 0.1),
+    fired: false,
+    art: rng.chance(0.5) ? 'paparazzi' : 'journalist',
+    h: 68,
+  };
   sfx.warn();
-  toast('PRESSA KJEM! Vink!', 'warn');
+  eventPanel('feil', 'PRESSA KJEM — VINK!', 'utropsteikn');
 }
 
 function resolvePress() {
-  const good = wavedRecently(1.1);
   state.flash = 1;
   sfx.flash();
-  if (good) {
-    state.pop = Math.min(100, state.pop + 16);
+  if (wavedRecently()) {
+    state.folk = Math.min(100, state.folk + 16);
+    state.verd = Math.min(100, state.verd + 6);
     state.score += 220;
-    toast('«Kongen i storform» — godt vinka!', 'good');
+    eventPanel('ok', '«Kongen i storform»', 'avisframside');
   } else {
-    state.pop -= 15;
+    state.folk -= 14;
+    state.verd -= 10;
     state.combo = 0;
-    toast('«Sur konge på torget». Au.', 'bad');
+    eventPanel('feil', '«Sur konge på torget»', 'sladrespalte');
   }
   updateHud();
 }
 
-function spawnDurek() {
+function spawnSjaman() {
   const rng = makeRng(randomSeed());
-  state.hazards.durek = {
-    x: rng.range(200, WORLD_W - 200),
-    y: rng.range(200, WORLD_H - 120),
+  state.hazards.sjaman = {
+    x: rng.range(220, WORLD_W - 220),
+    y: rng.range(220, WORLD_H - 120),
     vx: rng.range(-16, 16),
     vy: rng.range(-8, 8),
     t: 0,
     life: 15,
-    spr: personSprite('durek', rng.int(1, 1e6), 1.2),
+    h: 74,
   };
   sfx.durek();
-  toast('Sjaman Durek held seanse. Sikta blir tåkete.', 'warn');
+  toast('Sjamanen held seanse. Sikta blir tåkete.', 'warn', 'tankeboble');
 }
 
-function spawnKsv() {
+function spawnVakt() {
   const dir = Math.random() < 0.5 ? 1 : -1;
-  const spr = ksvSprite(11 + Math.floor(Math.random() * 4), (Math.random() * 1e6) | 0);
-  state.hazards.ksv = {
-    y: 160 + Math.random() * (WORLD_H - 320),
-    x: dir > 0 ? -spr.w : WORLD_W,
+  const n = 9 + Math.floor(Math.random() * 4);
+  const w = n * 40 + 24;
+  state.hazards.vakt = {
+    n, w, h: 80,
+    y: 170 + Math.random() * (WORLD_H - 330),
+    x: dir > 0 ? -w : WORLD_W,
     dir,
-    speed: 150 + state.level * 12,
-    spr,
+    speed: 140 + state.level * 12,
   };
-  toast('KSV sperrar av. Ingen ser noko no.', 'warn');
+  toast('Vaktene sperrar av. Ingen ser noko no.', 'warn');
 }
+
+const STORMS = [
+  { art: 'some-storm', text: 'Kommentarfeltet kokar.' },
+  { art: 'kommentarfelt', text: 'Nokon har sterke meiningar om deg.' },
+  { art: 'skandalesky', text: 'Skandalesky over Slottsplassen.' },
+  { art: 'regnstorm', text: 'Regn over heile seremonien.' },
+  { art: 'kongehusbrak', text: 'Bråk i kongehuset.' },
+];
+
+function spawnStorm() {
+  const s = STORMS[Math.floor(Math.random() * STORMS.length)];
+  state.hazards.storm = { ...s, t: 0 };
+  const el = $('#storm');
+  el.hidden = false;
+  el.className = 'show';
+  el.innerHTML = `<img src="${artUrl(s.art)}" alt=""><span>${s.text}</span><b>klikk vekk</b>`;
+  sfx.warn();
+}
+
+function hideStorm() {
+  state.hazards.storm = null;
+  const el = $('#storm');
+  el.className = '';
+  el.hidden = true;
+}
+
+$('#storm').addEventListener('click', () => {
+  if (!state.hazards.storm) return;
+  state.score += 140;
+  state.verd = Math.min(100, state.verd + 6);
+  sfx.found();
+  toast('Du lét stormen gå over. +140', 'good', 'tommel-opp');
+  hideStorm();
+  updateHud();
+});
 
 // --------------------------------------------------------------- treff
 
 function hitTest(wx, wy) {
   const hz = state.hazards;
-  if (hz.durek) {
-    const d = hz.durek;
-    if (Math.hypot(wx - d.x, wy - d.y - 28) < 34) return { type: 'durek' };
-  }
-  if (hz.press && hz.press.fired === false) {
-    const p = hz.press;
-    if (Math.hypot(wx - p.x, wy - p.y - 26) < 30) return { type: 'press' };
-  }
-  if (hz.ksv) {
-    const k = hz.ksv;
-    if (wy > k.y - k.spr.h && wy < k.y + 10 && wx > k.x && wx < k.x + k.spr.w) return { type: 'blocked' };
+  if (hz.sjaman && Math.hypot(wx - hz.sjaman.x, wy - hz.sjaman.y - 34) < 40) return { type: 'sjaman' };
+  if (hz.press && !hz.press.fired && Math.hypot(wx - hz.press.x, wy - hz.press.y - 32) < 36) return { type: 'press' };
+  if (hz.vakt) {
+    const k = hz.vakt;
+    if (wy > k.y - k.h && wy < k.y + 8 && wx > k.x && wx < k.x + k.w) return { type: 'blocked' };
   }
   let best = null;
   let bestD = Infinity;
@@ -353,45 +383,55 @@ function tap(sx, sy) {
   const { x, y } = toWorld(sx, sy);
   const hit = hitTest(x, y);
 
-  if (hit.type === 'durek') {
-    state.hazards.durek = null;
+  if (hit.type === 'sjaman') {
+    state.hazards.sjaman = null;
     state.score += 260;
-    state.pop = Math.min(100, state.pop + 5);
+    state.verd = Math.min(100, state.verd + 8);
     sfx.found();
-    toast('Du takka nei til krystallen. +260', 'good');
-    updateHud();
-    return;
+    toast('Du takka nei til krystallen. +260', 'good', 'tommel-opp');
+    return updateHud();
   }
   if (hit.type === 'press') {
     state.hazards.press = null;
     state.score += 120;
     sfx.found();
-    toast('Livvakta tok linsa. +120', 'good');
-    updateHud();
-    return;
+    toast('Livvakta tok linsa. +120', 'good', 'smilefjes');
+    return updateHud();
   }
   if (hit.type === 'blocked') {
-    toast('KSV: «ingenting å sjå her».', 'bad');
-    sfx.miss();
-    return;
+    toast('«Ingenting å sjå her.»', 'bad');
+    return sfx.miss();
   }
   if (hit.type === 'target') {
     const t = hit.target;
     t.found = true;
+    sfx.found();
+    if (t.kind === 'bonus') {
+      if (t.item === 'hjarte') {
+        state.folk = Math.min(100, state.folk + 18);
+        toast('Eit hjarte frå folket.', 'good', 'hjarte-lite');
+      } else {
+        state.verd = Math.min(100, state.verd + 20);
+        toast('Ei stjerne på brystet.', 'good', 'stjerne');
+      }
+      state.score += 90;
+      return updateHud();
+    }
     state.combo = Math.min(5, state.combo + 1);
     const pts = (t.item === 'harald' ? 500 : 130) * state.combo;
     state.score += pts;
-    state.pop = Math.min(100, state.pop + (t.item === 'harald' ? 12 : 6));
-    sfx.found();
-    toast(t.item === 'harald' ? `DER ER HAN! +${pts}` : `Funne! +${pts} (x${state.combo})`, 'good');
+    state.folk = Math.min(100, state.folk + (t.item === 'harald' ? 12 : 5));
+    state.verd = Math.min(100, state.verd + 3);
+    toast(t.item === 'harald' ? `DER ER HAN! +${pts}` : `Funne! +${pts} (x${state.combo})`, 'good', 'applaus');
     updateChecklist();
     updateHud();
-    if (state.board.targets.every((q) => q.found)) levelClear();
+    if (state.board.targets.every((q) => q.found || q.kind === 'bonus')) levelClear();
     return;
   }
 
   state.combo = 0;
-  state.pop -= 2.5;
+  state.folk -= 2;
+  state.verd -= 3;
   sfx.miss();
   state.ring = { x, y, t: 0, bad: true };
   updateHud();
@@ -399,38 +439,53 @@ function tap(sx, sy) {
 
 function useHint() {
   if (state.hints <= 0 || state.phase !== 'play') return;
-  const left = state.board.targets.filter((t) => !t.found);
+  const left = state.board.targets.filter((t) => !t.found && t.kind !== 'bonus');
   if (!left.length) return;
   const t = left[Math.floor(Math.random() * left.length)];
   state.hints--;
-  state.pop -= 8;
+  state.verd -= 6;
   state.ring = { x: t.x, y: t.y, t: 0, bad: false, big: true };
   centerOn(t.x, t.y, Math.max(state.view.scale, state.view.min * 2));
-  toast('Hoffet peikar i rett retning.', '');
+  toast('Hoffet peikar i rett retning.', '', 'radgivar');
   updateHud();
 }
 
-// --------------------------------------------------------------- rundeslutt
+// --------------------------------------------------------------- liv og slutt
+
+function loseLife(why) {
+  state.lives--;
+  state.combo = 0;
+  sfx.lose();
+  if (state.lives <= 0) return gameOver(why);
+  state.folk = 58;
+  state.verd = 72;
+  state.hazards = { press: null, sjaman: null, vakt: null, storm: null };
+  hideStorm();
+  eventPanel('feil', why + ' Eitt liv borte.', 'radgivar');
+  updateHud();
+}
 
 function levelClear() {
   state.phase = 'clear';
   const timeBonus = Math.max(0, Math.round(600 - state.levelTime * 6));
-  const popBonus = Math.round(state.pop * 8);
-  state.score += timeBonus + popBonus;
+  const meterBonus = Math.round((state.folk + state.verd) * 4);
+  state.score += timeBonus + meterBonus;
   sfx.win();
   saveBest();
   showOverlay(`
     <div class="card">
+      <img class="hurra" src="${artUrl('hurra')}" alt="">
       <h2>Nivå ${state.level} klart</h2>
       <p class="lead">Alt funne på ${state.levelTime.toFixed(1)} s.</p>
       <ul class="tally">
         <li><span>Tidsbonus</span><b>+${timeBonus}</b></li>
-        <li><span>Folkegunst</span><b>+${popBonus}</b></li>
+        <li><span>Folk og verdigheit</span><b>+${meterBonus}</b></li>
         <li><span>Sum</span><b>${Math.round(state.score)}</b></li>
       </ul>
       <p class="lead">Og no: <b>vink til folket</b>.</p>
       <button class="btn big" id="nextBtn">👋 VINK OG GÅ VIDARE</button>
       <p class="fine">(eller trykk mellomrom)</p>
+      <img class="cheer" src="${artUrl('folkemengd')}" alt="">
     </div>`);
   $('#nextBtn').onclick = () => nextLevel();
   updateHud();
@@ -439,18 +494,19 @@ function levelClear() {
 function nextLevel() {
   hideOverlay();
   state.phase = 'play';
-  state.pop = Math.min(100, state.pop + 10);
+  state.folk = Math.min(100, state.folk + 10);
+  state.verd = Math.min(100, state.verd + 8);
   newLevel(state.level + 1);
 }
 
-function gameOver() {
+function gameOver(why) {
   state.phase = 'over';
-  sfx.lose();
   saveBest();
   showOverlay(`
     <div class="card">
-      <h2>Folket har snudd</h2>
-      <p class="lead">Du vinka for lite, og pressa fekk siste ordet.</p>
+      <img class="hero" src="${artUrl('sladrespalte')}" alt="">
+      <h2>Gått under</h2>
+      <p class="lead">${why}</p>
       <ul class="tally">
         <li><span>Nivå</span><b>${state.level}</b></li>
         <li><span>Poeng</span><b>${Math.round(state.score)}</b></li>
@@ -464,29 +520,26 @@ function gameOver() {
 function saveBest() {
   if (state.score > state.best) {
     state.best = Math.round(state.score);
-    localStorage.setItem('finnharald.best', String(state.best));
+    localStorage.setItem('kongespelet.best', String(state.best));
   }
 }
 
 // --------------------------------------------------------------- oppdatering
 
 function update(dt) {
-  if (state.phase !== 'play') {
-    state.waveAnim = Math.max(0, state.waveAnim - dt * 1.6);
-    state.flash = Math.max(0, state.flash - dt * 3);
-    return;
-  }
-  state.levelTime += dt;
   state.waveAnim = Math.max(0, state.waveAnim - dt * 1.6);
   state.flash = Math.max(0, state.flash - dt * 3);
+  if (state.phase !== 'play') return;
+
+  state.levelTime += dt;
   state.waveEff = Math.min(1, state.waveEff + dt * 0.14);
   if (state.ring) {
     state.ring.t += dt;
     if (state.ring.t > (state.ring.big ? 2.6 : 0.5)) state.ring = null;
   }
 
-  // folkegunsten renn alltid litt ut
-  let drain = 1.35 + state.level * 0.22;
+  let folkDrain = 1.3 + state.level * 0.2;
+  let verdDrain = 0.35;
   const hz = state.hazards;
 
   if (hz.press) {
@@ -495,47 +548,52 @@ function update(dt) {
       hz.press.fired = true;
       resolvePress();
     }
-    if (hz.press.t > hz.press.warn + 1.2) hz.press = state.hazards.press = null;
-  } else {
-    state.timers.press -= dt;
-    if (state.timers.press <= 0) {
-      spawnPress();
-      state.timers.press = Math.max(6, 13 - state.level * 0.7) + Math.random() * 4;
-    }
+    if (hz.press.t > hz.press.warn + 1.2) state.hazards.press = null;
+  } else if ((state.timers.press -= dt) <= 0) {
+    spawnPress();
+    state.timers.press = Math.max(6, 13 - state.level * 0.7) + Math.random() * 4;
   }
 
-  if (hz.durek) {
-    const d = hz.durek;
+  if (hz.sjaman) {
+    const d = hz.sjaman;
     d.t += dt;
     d.x += d.vx * dt;
     d.y += d.vy * dt;
-    if (d.x < 120 || d.x > WORLD_W - 120) d.vx *= -1;
-    if (d.y < 160 || d.y > WORLD_H - 80) d.vy *= -1;
-    drain += 1.0;
-    if (d.t > d.life) state.hazards.durek = null;
-  } else {
-    state.timers.durek -= dt;
-    if (state.timers.durek <= 0) {
-      spawnDurek();
-      state.timers.durek = 22 + Math.random() * 10;
-    }
+    if (d.x < 140 || d.x > WORLD_W - 140) d.vx *= -1;
+    if (d.y < 180 || d.y > WORLD_H - 80) d.vy *= -1;
+    verdDrain += 1.2;
+    if (d.t > d.life) state.hazards.sjaman = null;
+  } else if ((state.timers.sjaman -= dt) <= 0) {
+    spawnSjaman();
+    state.timers.sjaman = 22 + Math.random() * 10;
   }
 
-  if (hz.ksv) {
-    hz.ksv.x += hz.ksv.dir * hz.ksv.speed * dt;
-    if (hz.ksv.dir > 0 ? hz.ksv.x > WORLD_W : hz.ksv.x + hz.ksv.spr.w < 0) state.hazards.ksv = null;
-  } else {
-    state.timers.ksv -= dt;
-    if (state.timers.ksv <= 0) {
-      spawnKsv();
-      state.timers.ksv = 26 + Math.random() * 12;
-    }
+  if (hz.vakt) {
+    hz.vakt.x += hz.vakt.dir * hz.vakt.speed * dt;
+    if (hz.vakt.dir > 0 ? hz.vakt.x > WORLD_W : hz.vakt.x + hz.vakt.w < 0) state.hazards.vakt = null;
+  } else if ((state.timers.vakt -= dt) <= 0) {
+    spawnVakt();
+    state.timers.vakt = 26 + Math.random() * 12;
   }
 
-  state.pop -= drain * dt;
-  if (state.pop <= 0) {
-    state.pop = 0;
-    gameOver();
+  if (hz.storm) {
+    hz.storm.t += dt;
+    verdDrain += 1.5;
+    folkDrain += 0.4;
+  } else if ((state.timers.storm -= dt) <= 0) {
+    spawnStorm();
+    state.timers.storm = 24 + Math.random() * 14;
+  }
+
+  state.folk -= folkDrain * dt;
+  state.verd -= verdDrain * dt;
+
+  if (state.folk <= 0) {
+    state.folk = 0;
+    loseLife('Folket snudde ryggen til.');
+  } else if (state.verd <= 0) {
+    state.verd = 0;
+    loseLife('Verdigheita rakna.');
   }
   updateHud();
 }
@@ -549,21 +607,16 @@ function draw() {
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = '#f4f1ea';
   ctx.fillRect(0, 0, w, h);
-
   if (!state.board) return;
 
   ctx.save();
   ctx.scale(v.scale, v.scale);
   ctx.translate(-v.x, -v.y);
-
-  // brettet
-  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(state.boardCanvas, 0, 0, WORLD_W, WORLD_H);
 
-  // funne ting får ein blekkring
   ctx.lineWidth = 2.4 / v.scale;
   for (const t of state.board.targets) {
-    if (!t.found) continue;
+    if (!t.found || t.kind === 'bonus') continue;
     ctx.strokeStyle = t.item === 'harald' ? '#d4453a' : '#2f7a3f';
     ctx.beginPath();
     ctx.arc(t.x, t.y, t.r + 5, 0, Math.PI * 2);
@@ -573,7 +626,7 @@ function draw() {
   if (state.ring) {
     const r = state.ring;
     const k = r.big ? 1 - r.t / 2.6 : 1 - r.t / 0.5;
-    ctx.strokeStyle = r.bad ? 'rgba(200,60,50,' + k + ')' : 'rgba(40,90,190,' + k + ')';
+    ctx.strokeStyle = r.bad ? `rgba(200,60,50,${k})` : `rgba(40,90,190,${k})`;
     ctx.lineWidth = 3 / v.scale;
     ctx.beginPath();
     ctx.arc(r.x, r.y, (r.big ? 90 : 34) * (r.big ? 1 - k * 0.5 : 1 + (1 - k)), 0, Math.PI * 2);
@@ -582,49 +635,45 @@ function draw() {
 
   const hz = state.hazards;
 
-  // KSV-sperringa
-  if (hz.ksv) {
-    const k = hz.ksv;
+  if (hz.vakt) {
+    const k = hz.vakt;
     ctx.save();
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = 0.24;
     ctx.fillStyle = '#2a2a30';
-    ctx.fillRect(k.x, k.y - k.spr.h + 8, k.spr.w, k.spr.h);
+    ctx.fillRect(k.x, k.y - k.h + 12, k.w, k.h);
     ctx.restore();
-    ctx.drawImage(k.spr.canvas, k.x, k.y - k.spr.h, k.spr.w, k.spr.h);
+    for (let i = 0; i < k.n; i++) drawArt(ctx, 'vakt', k.x + 26 + i * 40, k.y, k.h);
   }
 
-  // sjaman Durek + tåke
-  if (hz.durek) {
-    const d = hz.durek;
-    const rad = 60 + Math.min(1, d.t / 6) * 190;
-    const g = ctx.createRadialGradient(d.x, d.y - 20, rad * 0.15, d.x, d.y - 20, rad);
-    g.addColorStop(0, 'rgba(150,90,210,0.78)');
-    g.addColorStop(0.55, 'rgba(150,90,210,0.42)');
+  if (hz.sjaman) {
+    const d = hz.sjaman;
+    const rad = 70 + Math.min(1, d.t / 6) * 190;
+    const g = ctx.createRadialGradient(d.x, d.y - 30, rad * 0.15, d.x, d.y - 30, rad);
+    g.addColorStop(0, 'rgba(150,90,210,0.72)');
+    g.addColorStop(0.55, 'rgba(150,90,210,0.4)');
     g.addColorStop(1, 'rgba(150,90,210,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(d.x, d.y - 20, rad, 0, Math.PI * 2);
+    ctx.arc(d.x, d.y - 30, rad, 0, Math.PI * 2);
     ctx.fill();
-    ctx.drawImage(d.spr.canvas, d.x - d.spr.anchorX, d.y - d.spr.anchorY, d.spr.w, d.spr.h);
+    drawArt(ctx, 'sjaman', d.x, d.y, d.h);
   }
 
-  // pressefotograf
   if (hz.press) {
     const p = hz.press;
-    ctx.drawImage(p.spr.canvas, p.x - p.spr.anchorX, p.y - p.spr.anchorY, p.spr.w, p.spr.h);
+    drawArt(ctx, p.art, p.x, p.y, p.h);
     if (!p.fired) {
       const k = 1 - (p.t % 0.6) / 0.6;
       ctx.strokeStyle = `rgba(212,69,58,${0.25 + k * 0.6})`;
       ctx.lineWidth = 3 / v.scale;
       ctx.beginPath();
-      ctx.arc(p.x, p.y - 26, 26 + (1 - k) * 22, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y - 32, 34 + (1 - k) * 24, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
 
   ctx.restore();
 
-  // blits frå kamera
   if (state.flash > 0) {
     ctx.fillStyle = `rgba(255,255,255,${state.flash * 0.75})`;
     ctx.fillRect(0, 0, w, h);
@@ -634,49 +683,27 @@ function draw() {
   drawMinimap(w, h);
 }
 
-// Din eigen kongelege hand nede i hjørnet.
+// Di eiga kongelege hand, nede i hjørnet.
 function drawWaveHand(w, h) {
   const a = state.waveAnim;
-  if (a < 0.02) return;
-  const swing = Math.sin(state.levelTime * 22) * 0.35 * a;
+  if (a < 0.02 || !IMG.vinkehand) return;
+  const hh = Math.min(280, h * 0.44);
+  const ww = artWidth('vinkehand', hh);
   ctx.save();
-  ctx.translate(w - 168, h + 62 - 54 * Math.min(1, a * 2));
-  ctx.rotate(-0.12 + swing);
-  ctx.scale(1.5, 1.5);
-  ctx.lineJoin = 'round';
-  const rng = makeRng(4242);
-  // erme
-  shape(ctx, rng, [[-22, 0], [22, 0], [16, -62], [-16, -62]], { fill: '#26262a', lw: 1.4, jitter: 0.3 });
-  shape(ctx, rng, [[-17, -58], [17, -58], [16, -68], [-16, -68]], { fill: '#fbf7ec', lw: 1.1, jitter: 0.25 });
-  // hand
-  blob(ctx, rng, 0, -86, 20, { fill: '#f0cca6', lw: 1.4, jitter: 0.4 });
-  for (let i = 0; i < 4; i++) {
-    const fx = -12 + i * 8;
-    shape(ctx, rng, [[fx - 3.5, -96], [fx + 3.5, -96], [fx + 3.5, -112 + (i === 3 ? 5 : 0)], [fx - 3.5, -112 + (i === 3 ? 5 : 0)]], {
-      fill: '#f0cca6', lw: 1.2, jitter: 0.3,
-    });
-  }
-  shape(ctx, rng, [[16, -84], [26, -92], [30, -84], [20, -76]], { fill: '#f0cca6', lw: 1.2, jitter: 0.3 });
-  if (a > 0.05) {
-    ctx.globalAlpha = a;
-    line(ctx, rng, [[-34, -104], [-44, -114]], { lw: 2 });
-    line(ctx, rng, [[-30, -92], [-42, -96]], { lw: 2 });
-    ctx.globalAlpha = 1;
-  }
+  ctx.translate(w - ww * 0.5 - 128, h + hh * 0.2 - hh * 0.28 * Math.min(1, a * 2));
+  ctx.rotate(Math.sin(state.levelTime * 22) * 0.16 * a);
+  ctx.drawImage(IMG.vinkehand, -ww / 2, -hh, ww, hh);
   ctx.restore();
 }
 
-// Lite oversiktskart så du ikkje går deg bort i mengda.
 function drawMinimap(w, h) {
-  if (!state.board) return;
-  // unødvendig når heile brettet alt er synleg
-  if (state.view.scale <= state.view.min * 1.02) return;
+  if (!state.board || state.view.scale <= state.view.min * 1.02) return;
   const mw = 116;
   const mh = (mw * WORLD_H) / WORLD_W;
   const x = 12;
   const y = h - mh - 12;
   ctx.save();
-  ctx.globalAlpha = 0.9;
+  ctx.globalAlpha = 0.92;
   ctx.fillStyle = '#fffdf8';
   ctx.strokeStyle = 'rgba(30,28,24,0.45)';
   ctx.lineWidth = 1;
@@ -689,18 +716,13 @@ function drawMinimap(w, h) {
   const { w: cw, h: ch } = cssSize();
   ctx.strokeStyle = '#d4453a';
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(
-    x + (v.x / WORLD_W) * mw,
-    y + (v.y / WORLD_H) * mh,
-    ((cw / v.scale) / WORLD_W) * mw,
-    ((ch / v.scale) / WORLD_H) * mh
-  );
+  ctx.strokeRect(x + (v.x / WORLD_W) * mw, y + (v.y / WORLD_H) * mh, ((cw / v.scale) / WORLD_W) * mw, ((ch / v.scale) / WORLD_H) * mh);
   ctx.restore();
 }
 
 // --------------------------------------------------------------- input
 
-let ptrs = new Map();
+const ptrs = new Map();
 let dragged = false;
 let last = null;
 let pinchDist = 0;
@@ -739,13 +761,12 @@ cv.addEventListener('pointermove', (e) => {
   last = { x: e.offsetX, y: e.offsetY };
 });
 
-function endPointer(e) {
+cv.addEventListener('pointerup', (e) => {
   if (ptrs.size === 1 && !dragged) tap(e.offsetX, e.offsetY);
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinchDist = 0;
   last = null;
-}
-cv.addEventListener('pointerup', endPointer);
+});
 cv.addEventListener('pointercancel', (e) => {
   ptrs.delete(e.pointerId);
   last = null;
@@ -768,6 +789,8 @@ window.addEventListener('keydown', (e) => {
     zoomAt(w / 2, h / 2, 1 / 1.2);
   } else if (e.key === 'h') {
     useHint();
+  } else if (e.key === 'p' || e.key === 'Escape') {
+    togglePause();
   } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
     e.preventDefault();
     const step = 90 / state.view.scale;
@@ -779,8 +802,21 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+function togglePause() {
+  if (state.phase === 'play') {
+    state.phase = 'pause';
+    showOverlay(`<div class="card"><h2>Pause</h2><p class="lead">Folket ventar.</p>
+      <button class="btn big" id="resumeBtn">Hald fram</button></div>`);
+    $('#resumeBtn').onclick = togglePause;
+  } else if (state.phase === 'pause') {
+    state.phase = 'play';
+    hideOverlay();
+  }
+}
+
 $('#waveBtn').addEventListener('click', doWave);
 $('#hintBtn').addEventListener('click', useHint);
+$('#pauseBtn').addEventListener('click', togglePause);
 $('#zoomIn').addEventListener('click', () => {
   const { w, h } = cssSize();
   zoomAt(w / 2, h / 2, 1.35);
@@ -791,38 +827,37 @@ $('#zoomOut').addEventListener('click', () => {
 });
 $('#muteBtn').addEventListener('click', () => {
   setMuted(!isMuted());
-  $('#muteBtn').textContent = isMuted() ? '🔇' : '🔊';
+  $('#muteBtn').firstElementChild.src = artUrl(isMuted() ? 'lyd-av' : 'lyd-pa');
 });
 $('#newBtn').addEventListener('click', () => {
   if (confirm('Byrje heilt på nytt?')) startGame();
 });
-
-window.addEventListener('resize', () => {
-  resize();
-});
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(cv.parentElement);
 
 // --------------------------------------------------------------- oppstart
 
 function menu() {
   state.phase = 'menu';
   showOverlay(`
-    <div class="card">
-      <h2>Finn Harald!</h2>
-      <p class="lead">Du er kongen. Du har rota deg bort i din eigen folkemengd,
-      og no må du finne både deg sjølv og alt på lista.</p>
+    <div class="card menu">
+      <img class="hero" src="${artUrl('hero-banner')}" alt="Kong Harald">
+      <p class="lead">Du er kongen. Du har rota deg bort i di eiga folkemengd,
+      og no må du finne både deg sjølv og alt du har mist.</p>
       <ul class="rules">
         <li><b>Klikk</b> på tinga på lista. Dra for å flytte deg, rull for å zoome.</li>
-        <li><b>Vink</b> med <kbd>mellomrom</kbd> eller knappen. Folkegunsten renn ut heile tida.</li>
-        <li><b>Pressa</b> ropar før dei knipsar — vink akkurat då.</li>
-        <li><b>Sjaman Durek</b> tåkelegg torget. Klikk han vekk.</li>
-        <li><b>KSV</b> sperrar av. Vent, eller leit ein annan stad.</li>
+        <li><b>Vink</b> med <kbd>mellomrom</kbd>. Folkekjærleiken renn ut heile tida —
+        men vinkar du i eitt sett, ryk <b>verdigheita</b>.</li>
+        <li><b>Pressa</b> ropar før dei knipsar. Vink akkurat då.</li>
+        <li><b>Sjamanen</b> tåkelegg torget, <b>vaktene</b> sperrar av, og
+        kommentarfeltet kokar. Klikk deg ut av det.</li>
+        <li><b>Hjarte</b> gir folkekjærleik, <b>stjerner</b> gir verdigheit.</li>
       </ul>
-      <button class="btn big" id="playBtn">Start</button>
+      <button class="btn start" id="playBtn"><img src="${artUrl('startknapp')}" alt="Start"></button>
       <p class="fine">Nytt brett kvar gong. Beste: ${state.best}</p>
     </div>`);
   $('#playBtn').onclick = () => {
-    const url = new URL(location.href);
-    const s = url.searchParams.get('seed');
+    const s = new URL(location.href).searchParams.get('seed');
     startGame(s ? parseInt(s, 36) >>> 0 : undefined);
   };
 }
@@ -837,9 +872,12 @@ function loop(now) {
 }
 
 resize();
-newLevel(1, randomSeed());
-menu();
-requestAnimationFrame(loop);
+showOverlay(`<div class="card"><img class="spin" src="${artUrl('lasting')}" alt=""><p class="lead">Lastar folkemengda…</p></div>`);
+loadAssets().then(() => {
+  newLevel(1, randomSeed());
+  menu();
+  requestAnimationFrame(loop);
+});
 
-// hjelp til utviklingsverktøy/skjermbilete
-window.__game = { state, startGame, newLevel, centerOn, hideOverlay, doWave, spawnPress, spawnDurek, spawnKsv };
+// krokar for utviklingsverktøy
+window.__game = { state, startGame, newLevel, centerOn, hideOverlay, doWave, spawnPress, spawnSjaman, spawnVakt, spawnStorm };

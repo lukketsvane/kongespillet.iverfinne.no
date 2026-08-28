@@ -8,7 +8,7 @@ const root = path.resolve(process.argv[2] || '.');
 const out = process.argv[3] || '/tmp/shot.png';
 const script = process.argv[4] || '';
 
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.mjs': 'text/javascript' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.mjs': 'text/javascript', '.png': 'image/png', '.json': 'application/json' };
 
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);

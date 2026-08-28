@@ -1,91 +1,17 @@
-// Ting i folkemengda: både dei du skal finne og alle lokkedyra.
-// Alt er teikna i kode med same blekk-penn som folka.
+// Smått og staffasje i folkemengda: hundar, ballongar, fontener, bodar.
+// Tinga du skal finne kjem frå dei teikna ressurs-arka; dette er berre liv
+// rundt dei, teikna med same blekk-penn som folka.
 
 import { shape, line, blob, dot, circlePts, arcPts, rectPts } from './draw.js';
-import { drawCrown } from './people.js';
 
 const P = {};
 
-// --- ting på lista ------------------------------------------------------
+// --- smått i mengda -----------------------------------------------------
 
-P.baat = (ctx, rng, u) => {
-  // liten leikebåt
-  shape(ctx, rng, [
-    [-u * 0.62, 0], [u * 0.62, 0], [u * 0.42, u * 0.26], [-u * 0.42, u * 0.26],
-  ], { fill: '#d4453a', lw: 0.95, jitter: 0.3 });
-  line(ctx, rng, [[0, 0], [0, -u * 0.85]], { lw: 0.9 });
-  shape(ctx, rng, [
-    [u * 0.04, -u * 0.82], [u * 0.5, -u * 0.06], [u * 0.04, -u * 0.06],
-  ], { fill: '#fbf7ec', lw: 0.85, jitter: 0.25, sharp: true });
-  shape(ctx, rng, [
-    [-u * 0.04, -u * 0.72], [-u * 0.42, -u * 0.06], [-u * 0.04, -u * 0.06],
-  ], { fill: '#e6e2d8', lw: 0.85, jitter: 0.25, sharp: true });
-};
 
-P.blaabaat = (ctx, rng, u) => {
-  // lokkedyr: same båt, blå
-  shape(ctx, rng, [
-    [-u * 0.6, 0], [u * 0.6, 0], [u * 0.4, u * 0.25], [-u * 0.4, u * 0.25],
-  ], { fill: '#3a6ea5', lw: 0.95, jitter: 0.3 });
-  line(ctx, rng, [[0, 0], [0, -u * 0.8]], { lw: 0.9 });
-  shape(ctx, rng, [
-    [u * 0.04, -u * 0.78], [u * 0.48, -u * 0.06], [u * 0.04, -u * 0.06],
-  ], { fill: '#cfd6db', lw: 0.85, jitter: 0.25, sharp: true });
-};
 
-P.sira = (ctx, rng, u) => {
-  // seilbåten Sira, med vatn under
-  const w = u * 1.9;
-  ctx.save();
-  ctx.globalAlpha = 0.9;
-  for (let i = 0; i < 3; i++) {
-    line(ctx, rng, arcPts(-w * 0.1 + i * w * 0.28, u * 0.5 + i * u * 0.12, w * 0.34, Math.PI, Math.PI * 2, 6, 0.35), {
-      ink: '#5b9dd9', lw: 1.1, jitter: 0.4,
-    });
-  }
-  ctx.restore();
-  shape(ctx, rng, [
-    [-w * 0.5, 0], [w * 0.5, 0], [w * 0.34, u * 0.34], [-w * 0.38, u * 0.34],
-  ], { fill: '#8a5a34', lw: 1.05, jitter: 0.35 });
-  line(ctx, rng, [[-w * 0.05, 0], [-w * 0.05, -u * 1.5]], { lw: 1.0 });
-  shape(ctx, rng, [
-    [-w * 0.01, -u * 1.46], [w * 0.34, -u * 0.06], [-w * 0.01, -u * 0.06],
-  ], { fill: '#fbf7ec', lw: 0.95, jitter: 0.3, sharp: true });
-  shape(ctx, rng, [
-    [-w * 0.09, -u * 1.3], [-w * 0.42, -u * 0.06], [-w * 0.09, -u * 0.06],
-  ], { fill: '#efe9dc', lw: 0.95, jitter: 0.3, sharp: true });
-};
 
-P.flagg = (ctx, rng, u) => {
-  line(ctx, rng, [[0, u * 0.2], [0, -u * 1.5]], { lw: 1.0 });
-  const w = u * 1.05;
-  const h = u * 0.76;
-  const y0 = -u * 1.5;
-  shape(ctx, rng, rectPts(0, y0, w, h), { fill: '#d4453a', lw: 0.9, jitter: 0.25, sharp: true });
-  ctx.save();
-  ctx.fillStyle = '#fbf7ec';
-  ctx.fillRect(w * 0.28, y0, w * 0.2, h);
-  ctx.fillRect(0, y0 + h * 0.36, w, h * 0.28);
-  ctx.fillStyle = '#26457a';
-  ctx.fillRect(w * 0.33, y0, w * 0.1, h);
-  ctx.fillRect(0, y0 + h * 0.43, w, h * 0.14);
-  ctx.restore();
-  shape(ctx, rng, rectPts(0, y0, w, h), { fill: null, lw: 0.9, jitter: 0.25, sharp: true });
-};
 
-P.danskflagg = (ctx, rng, u) => {
-  line(ctx, rng, [[0, u * 0.2], [0, -u * 1.4]], { lw: 1.0 });
-  const w = u * 0.95;
-  const h = u * 0.7;
-  const y0 = -u * 1.4;
-  shape(ctx, rng, rectPts(0, y0, w, h), { fill: '#d4453a', lw: 0.9, jitter: 0.25, sharp: true });
-  ctx.save();
-  ctx.fillStyle = '#fbf7ec';
-  ctx.fillRect(w * 0.3, y0, w * 0.13, h);
-  ctx.fillRect(0, y0 + h * 0.42, w, h * 0.16);
-  ctx.restore();
-  shape(ctx, rng, rectPts(0, y0, w, h), { fill: null, lw: 0.9, jitter: 0.25, sharp: true });
-};
 
 P.rev = (ctx, rng, u) => {
   const c = '#e07a2f';
@@ -125,66 +51,13 @@ P.hund = (ctx, rng, u) => {
   dot(ctx, u * 0.78, -u * 0.62, u * 0.05);
 };
 
-P.stokk = (ctx, rng, u) => {
-  line(ctx, rng, [
-    [u * 0.34, -u * 1.5], [u * 0.02, -u * 1.46], [-u * 0.05, -u * 1.18], [u * 0.05, -u * 0.6], [u * 0.02, 0],
-  ], { lw: 1.5, jitter: 0.3 });
-};
 
-P.stovel = (ctx, rng, u) => {
-  shape(ctx, rng, [
-    [-u * 0.2, -u * 0.95], [u * 0.22, -u * 0.95], [u * 0.24, -u * 0.3],
-    [u * 0.62, -u * 0.26], [u * 0.66, 0], [-u * 0.22, 0],
-  ], { fill: '#232326', lw: 1.0, jitter: 0.28 });
-};
 
-P.stovlar = (ctx, rng, u) => {
-  P.stovel(ctx, rng, u);
-  ctx.save();
-  ctx.translate(u * 0.72, -u * 0.05);
-  ctx.scale(0.94, 0.94);
-  P.stovel(ctx, rng, u);
-  ctx.restore();
-};
 
-P.sko = (ctx, rng, u) => {
-  shape(ctx, rng, [
-    [-u * 0.18, -u * 0.34], [u * 0.16, -u * 0.36], [u * 0.2, -u * 0.2],
-    [u * 0.55, -u * 0.16], [u * 0.58, 0], [-u * 0.2, 0],
-  ], { fill: '#3a3a3c', lw: 0.95, jitter: 0.28 });
-};
 
-P.mikrofon = (ctx, rng, u) => {
-  line(ctx, rng, [[0, 0], [0, -u * 1.05]], { lw: 1.3 });
-  line(ctx, rng, [[-u * 0.32, 0], [u * 0.32, 0]], { lw: 1.2 });
-  shape(ctx, rng, circlePts(0, -u * 1.32, u * 0.34, 12, 1.25), { fill: '#8a8f96', lw: 1.0, jitter: 0.25 });
-  ctx.save();
-  ctx.strokeStyle = '#4a4f55';
-  ctx.lineWidth = 0.6;
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.moveTo(-u * 0.3, -u * 1.32 + i * u * 0.16);
-    ctx.lineTo(u * 0.3, -u * 1.32 + i * u * 0.16);
-    ctx.stroke();
-  }
-  ctx.restore();
-};
 
-P.note = (ctx, rng, u) => {
-  shape(ctx, rng, circlePts(-u * 0.22, -u * 0.12, u * 0.26, 12, 0.82), { fill: '#1d1b18', lw: 0.9, jitter: 0.2 });
-  line(ctx, rng, [[u * 0.02, -u * 0.16], [u * 0.06, -u * 1.15]], { lw: 1.3 });
-  shape(ctx, rng, [
-    [u * 0.06, -u * 1.15], [u * 0.42, -u * 0.92], [u * 0.4, -u * 0.6], [u * 0.2, -u * 0.82], [u * 0.06, -u * 0.85],
-  ], { fill: '#1d1b18', lw: 0.9, jitter: 0.2 });
-};
 
-P.gklave = (ctx, rng, u) => {
-  line(ctx, rng, [
-    [u * 0.1, 0], [u * 0.3, -u * 0.35], [-u * 0.2, -u * 0.6], [u * 0.2, -u * 0.95], [u * 0.1, -u * 0.3], [-u * 0.05, u * 0.15],
-  ], { lw: 1.2, jitter: 0.25 });
-};
 
-P.krone = (ctx, rng, u) => drawCrown(ctx, rng, 0, 0, u * 1.05);
 
 // --- staffasje og lokkedyr ---------------------------------------------
 
@@ -198,22 +71,12 @@ P.ballong = (ctx, rng, u) => {
   }
 };
 
-P.is = (ctx, rng, u) => {
-  shape(ctx, rng, [[-u * 0.28, -u * 0.5], [u * 0.28, -u * 0.5], [0, u * 0.1]], { fill: '#d8a86a', lw: 0.85, jitter: 0.2, sharp: true });
-  blob(ctx, rng, 0, -u * 0.68, u * 0.3, { fill: rng.pick(['#e79ab4', '#fbf7ec', '#8a5a34']), lw: 0.85, jitter: 0.25 });
-};
 
 P.veske = (ctx, rng, u) => {
   shape(ctx, rng, rectPts(-u * 0.35, -u * 0.55, u * 0.7, u * 0.55), { fill: rng.pick(['#8a5a34', '#2f2f31', '#d4453a']), lw: 0.9, jitter: 0.25 });
   line(ctx, rng, arcPts(0, -u * 0.55, u * 0.24, Math.PI, Math.PI * 2, 6), { lw: 0.9 });
 };
 
-P.paraply = (ctx, rng, u) => {
-  line(ctx, rng, [[0, 0], [0, -u * 1.35]], { lw: 1.0 });
-  shape(ctx, rng, arcPts(0, -u * 1.3, u * 0.8, Math.PI, Math.PI * 2, 10, 0.7).concat([[0, -u * 1.18]]), {
-    fill: rng.pick(['#3a6ea5', '#d4453a', '#43524a']), lw: 0.95, jitter: 0.3,
-  });
-};
 
 P.blomsterkasse = (ctx, rng, u) => {
   const w = u * 2.2;
@@ -333,8 +196,3 @@ export function drawProp(ctx, rng, key, x, y, s = 1) {
   ctx.restore();
 }
 
-// Omtrentleg treffradius i verdskoordinatar.
-export const PROP_HIT = {
-  baat: 15, blaabaat: 15, sira: 30, flagg: 16, danskflagg: 15, rev: 20, hund: 18,
-  stokk: 14, stovel: 13, stovlar: 16, sko: 12, mikrofon: 16, note: 13, gklave: 13, krone: 13,
-};

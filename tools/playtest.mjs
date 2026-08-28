@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve('.');
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
   const f = path.join(root, url === '/' ? 'index.html' : url);
@@ -21,7 +21,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push('CONSOLE: ' + m.text()));
 await page.goto('http://localhost:4174/', { waitUntil: 'networkidle' });
-await page.waitForTimeout(800);
+await page.waitForTimeout(2500);
 
 const results = [];
 for (const level of [1, 3, 6, 9]) {
@@ -31,7 +31,7 @@ for (const level of [1, 3, 6, 9]) {
     const t0 = performance.now();
     g.newLevel(lv, 777 + lv);
     const ms = performance.now() - t0;
-    g.state.pop = 100;
+    g.state.folk = 100; g.state.verd = 100;
     return {
       ms: Math.round(ms),
       slots: g.state.board.slots.length,
@@ -42,13 +42,18 @@ for (const level of [1, 3, 6, 9]) {
 
   // klikk på kvart mål via ekte museklikk
   const box = await page.locator('#board').boundingBox();
+  // bonus fyrst: runda blir klar med ein gong alle listeting er funne
+  await page.evaluate(() => {
+    const t = window.__game.state.board.targets;
+    t.sort((a, b) => (a.kind === 'bonus' ? -1 : 0) - (b.kind === 'bonus' ? -1 : 0));
+  });
   let n = await page.evaluate(() => window.__game.state.board.targets.length);
   let clicked = 0;
   for (let i = 0; i < n; i++) {
     const pos = await page.evaluate((idx) => {
       const g = window.__game;
       const t = g.state.board.targets[idx];
-      g.state.pop = 100;
+      g.state.folk = 100; g.state.verd = 100;
       g.centerOn(t.x, t.y, 1.6);
       const v = g.state.view;
       return { sx: (t.x - v.x) * v.scale, sy: (t.y - v.y) * v.scale, item: t.item };
@@ -73,13 +78,13 @@ const wave = await page.evaluate(() => {
   const g = window.__game;
   g.hideOverlay();
   g.startGame(5);
-  g.state.pop = 40;
-  const before = g.state.pop;
+  g.state.folk = 40;
+  const before = g.state.folk;
   g.doWave();
-  const after1 = g.state.pop;
+  const after1 = g.state.folk;
   g.state.levelTime += 1;
   g.doWave();
-  return { before, after1: Math.round(after1 * 10) / 10, after2: Math.round(g.state.pop * 10) / 10 };
+  return { before, after1: Math.round(after1 * 10) / 10, after2: Math.round(g.state.folk * 10) / 10 };
 });
 
 console.table(results);

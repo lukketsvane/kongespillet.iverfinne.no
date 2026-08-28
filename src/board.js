@@ -1,41 +1,36 @@
 // Brettgenerator. Kvar runde blir folkemengda trekt på nytt frå eit frø,
-// og tinga på lista blir gøymde i han.
+// og tinga frå ressurs-arka blir gøymde i han.
 
 import { makeRng } from './rng.js';
 import { makePerson, drawPerson } from './people.js';
-import { drawProp, PROP_HIT } from './props.js';
+import { drawProp } from './props.js';
+import { OBJECTS, FOLK, drawArt, artWidth } from './assets.js';
 
 export const WORLD_W = 1900;
 export const WORLD_H = 1240;
 
-// Lista nedst på plakaten.
-export const ITEMS = [
-  { key: 'krone', count: 3, label: '3 kroner', icon: 'krone', kind: 'person' },
-  { key: 'baat', count: 1, label: '1 liten båt', icon: 'baat', kind: 'prop' },
-  { key: 'flagg', count: 1, label: '1 flagg', icon: 'flagg', kind: 'prop' },
-  { key: 'rev', count: 1, label: 'rev', icon: 'rev', kind: 'prop' },
-  { key: 'sonja', count: 1, label: '1 Sonja', icon: 'sonja', kind: 'person' },
-  { key: 'stokk', count: 1, label: '1 stokk', icon: 'stokk', kind: 'prop' },
-  { key: 'stovel', count: 1, label: '1 gummistøvel', icon: 'stovel', kind: 'prop' },
-  { key: 'sira', count: 1, label: '1 Sira', icon: 'sira', kind: 'prop' },
-  { key: 'stovlar', count: 1, label: '2 gummistøvlar', icon: 'stovlar', kind: 'prop' },
-  { key: 'mikrofon', count: 1, label: '1 mikrofon', icon: 'mikrofon', kind: 'prop' },
-  { key: 'note', count: 1, label: '1 musikknote', icon: 'note', kind: 'prop' },
-  { key: 'macarena', count: 1, label: '1 macarena', icon: 'macarena', kind: 'person' },
-];
+// Sjekklista: alt kongen kan ha mist i mengda.
+export const ITEMS = Object.entries(OBJECTS)
+  .filter(([, o]) => !o.bonus)
+  .map(([key, o]) => ({
+    key,
+    count: key === 'krone' ? 3 : 1,
+    label: key === 'krone' ? '3 kroner' : /^[A-ZÆØÅ]/.test(o.label) ? o.label : '1 ' + o.label,
+  }));
 
-const DECOY_PROPS = ['hund', 'ballong', 'is', 'veske', 'paraply', 'maake', 'tuba', 'gitar', 'sko', 'blaabaat', 'danskflagg', 'gklave'];
+const BONUS = ['hjarte', 'hjarte', 'stjerne'];
+const SMATT = ['hund', 'ballong', 'veske', 'rev', 'maake', 'tuba', 'gitar'];
 const SCENERY = ['blomsterkasse', 'fontene', 'bod'];
 
-// Kor mange ting på lista i dette nivået, og kor tett folkemengda står.
+// Kor mange ting på lista, kor tett folkemengda står, kor mange lokkedyr.
 export function levelPlan(level) {
-  const n = Math.min(ITEMS.length, 2 + level);
   return {
-    itemCount: n,
+    itemCount: Math.min(ITEMS.length, 2 + level),
     rows: Math.min(21, 14 + Math.floor(level * 0.9)),
     gap: Math.max(3, 28 - level * 3.2),
-    decoys: 12 + level * 7,
-    haralds: 1,
+    decoys: 10 + level * 4,
+    folk: 6 + level * 2,
+    bonus: 3,
   };
 }
 
@@ -43,6 +38,7 @@ export function generateBoard(seed, level) {
   const rng = makeRng(seed);
   const plan = levelPlan(level);
   const chosen = rng.shuffle(ITEMS).slice(0, plan.itemCount);
+  const chosenKeys = new Set(chosen.map((c) => c.key));
 
   const slots = [];
   const marginX = 34;
@@ -56,10 +52,10 @@ export function generateBoard(seed, level) {
     let guard = 0;
     while (x < WORLD_W - marginX && guard++ < 200) {
       const s = (0.82 + depth * 0.24) * rng.range(0.94, 1.06);
-      if (rng.chance(0.022) && x < WORLD_W - 260) {
+      if (rng.chance(0.009) && x < WORLD_W - 260) {
         const key = rng.pick(SCENERY);
         const w = key === 'fontene' ? 150 : key === 'bod' ? 140 : 110;
-        slots.push({ type: 'scenery', key, x: x + w / 2, y: baseY + rng.range(-4, 4), s: s * 2.8, row: r });
+        slots.push({ type: 'scenery', key, x: x + w / 2, y: baseY + rng.range(-4, 4), s: s * 2.4, row: r });
         x += w + plan.gap;
         continue;
       }
@@ -89,21 +85,20 @@ export function generateBoard(seed, level) {
   };
 
   const targets = [];
-  const addTarget = (item, x, y, r) => targets.push({ id: `${item}#${targets.length}`, item, x, y, r, found: false });
+  const addTarget = (item, x, y, r, kind) =>
+    targets.push({ id: `${item}#${targets.length}`, item, x, y, r, kind, found: false });
 
-  // Harald sjølv: aldri heilt ute i kanten.
+  // Harald sjølv står i mengda, aldri heilt ute i kanten.
   const hi = takeSlot((s) => s.x > 180 && s.x < WORLD_W - 180 && s.y > 160 && s.y < WORLD_H - 120);
   slots[hi].person = makePerson(rng, { variant: 'harald' });
   slots[hi].s = 1.0;
   slots[hi].harald = true;
   const harald = { x: slots[hi].x, y: slots[hi].y };
-  addTarget('harald', harald.x, harald.y - 26, 26);
+  addTarget('harald', harald.x, harald.y - 26, 26, 'person');
 
-  // Lokkedyr: fleire mørke dressar med skjerf/orden, men utan krone.
-  const decoyKings = 3 + level;
-  for (let i = 0; i < decoyKings; i++) {
-    const di = takeSlot();
-    const d = slots[di].person;
+  // Lokkekongar: mørk dress og orden, men ingen krone.
+  for (let i = 0; i < 3 + level; i++) {
+    const d = slots[takeSlot()].person;
     d.coat = '#26262a';
     d.coatStyle = 'suit';
     d.pants = '#26262a';
@@ -114,61 +109,73 @@ export function generateBoard(seed, level) {
     d.pose = rng.pick(['wave', 'stand', 'point']);
   }
 
-  for (const item of chosen) {
-    for (let c = 0; c < item.count; c++) {
-      if (item.kind === 'person') {
-        const i = takeSlot((s) => s.x > 90 && s.x < WORLD_W - 90);
-        if (item.key === 'krone') {
-          slots[i].person.hat = 'crown';
-          slots[i].person.hatColor = '#f5cf2e';
-        } else {
-          slots[i].person = makePerson(rng, { variant: item.key });
-        }
-        slots[i].isTarget = item.key;
-        const yTop = slots[i].y - slots[i].person.h * slots[i].s;
-        addTarget(item.key, slots[i].x, item.key === 'krone' ? yTop - 4 : yTop + slots[i].person.h * slots[i].s * 0.5,
-          item.key === 'krone' ? 15 : 24);
-      } else {
-        const i = takeSlot((s) => s.x > 80 && s.x < WORLD_W - 80);
-        const host = slots[i];
-        const side = rng.chance(0.5) ? -1 : 1;
-        const px = host.x + side * rng.range(16, 26);
-        const py = host.y + rng.range(-2, 6);
-        const ps = item.key === 'sira' ? 0.85 : rng.range(0.6, 0.8);
-        slots.push({ type: 'prop', key: item.key, x: px, y: py, s: ps, row: host.row, target: item.key });
-        addTarget(item.key, px, py - 10 * ps, (PROP_HIT[item.key] || 15) * ps + 6);
-      }
+  // Legg ein teikna ting ved sida av ein tilfeldig person.
+  const placeArt = (key, isTarget) => {
+    const host = slots[takeSlot((s) => s.x > 90 && s.x < WORLD_W - 90)];
+    const o = OBJECTS[key];
+    const h = o.h * rng.range(0.92, 1.08);
+    const x = host.x + (rng.chance(0.5) ? -1 : 1) * rng.range(15, 27);
+    const y = host.y + rng.range(-3, 7);
+    slots.push({ type: 'art', key, x, y, h, row: host.row });
+    if (isTarget) {
+      const w = artWidth(key, h);
+      addTarget(key, x, y - h / 2, Math.max(14, Math.max(w, h) * 0.55), 'art');
     }
+    return { x, y, h };
+  };
+
+  for (const item of chosen) {
+    for (let c = 0; c < item.count; c++) placeArt(item.key, true);
   }
 
-  // Lokkedyr-rekvisittar
-  const chosenKeys = new Set(chosen.map((c) => c.key));
-  for (let i = 0; i < plan.decoys; i++) {
-    const idx = takeSlot();
-    const host = slots[idx];
-    if (!host || host.type !== 'person') continue;
-    let key = rng.pick(DECOY_PROPS);
-    // ikkje legg ut noko som er identisk med eit mål
-    if (chosenKeys.has(key)) key = rng.pick(['hund', 'ballong', 'is', 'veske', 'paraply']);
+  // Bonus: hjarte gir folkekjærleik, stjerne gir verdigheit.
+  for (let i = 0; i < plan.bonus; i++) {
+    const key = BONUS[i % BONUS.length];
+    const p = placeArt(key, false);
+    addTarget(key, p.x, p.y - p.h / 2, 17, 'bonus');
+  }
+
+  // Lokkedyr: dei same tinga, men ikkje på lista denne runden.
+  const decoyPool = Object.keys(OBJECTS).filter((k) => !chosenKeys.has(k) && !OBJECTS[k].bonus);
+  for (let i = 0; i < plan.decoys && decoyPool.length; i++) {
+    placeArt(rng.pick(decoyPool), false);
+  }
+
+  // Teikna folk frå arket, strødde inn mellom dei andre.
+  for (let i = 0; i < plan.folk; i++) {
+    const host = slots[takeSlot()];
+    if (!host) break;
     slots.push({
-      type: 'prop', key,
+      type: 'folk',
+      key: rng.pick(FOLK),
+      x: host.x + rng.range(-10, 10),
+      y: host.y + rng.range(0, 8),
+      h: rng.range(46, 56),
+      flip: rng.chance(0.4),
+      row: host.row,
+    });
+  }
+
+  // Litt smått i mengda, teikna i kode: hundar, ballongar, ein rev.
+  for (let i = 0; i < 8 + level * 2; i++) {
+    const host = slots[takeSlot()];
+    if (!host || host.type !== 'person') continue;
+    slots.push({
+      type: 'prop',
+      key: rng.pick(SMATT),
       x: host.x + (rng.chance(0.5) ? -1 : 1) * rng.range(14, 26),
       y: host.y + rng.range(-2, 6),
-      s: rng.range(0.55, 0.8),
+      s: rng.range(0.5, 0.72),
       row: host.row,
     });
   }
 
   slots.sort((a, b) => a.y - b.y);
 
-  return {
-    seed, level, plan, slots, targets, harald,
-    items: chosen,
-    w: WORLD_W, h: WORLD_H,
-  };
+  return { seed, level, plan, slots, targets, harald, items: chosen, w: WORLD_W, h: WORLD_H };
 }
 
-// Teiknar heile brettet ein gong til eit offscreen-lerret.
+// Teiknar heile brettet ein gong til eit lerret utanfor skjermen.
 export function renderBoard(board, dpr = 1) {
   const cv = document.createElement('canvas');
   cv.width = Math.round(WORLD_W * dpr);
@@ -183,6 +190,8 @@ export function renderBoard(board, dpr = 1) {
   const rng = makeRng(board.seed ^ 0x9e3779b9);
   for (const s of board.slots) {
     if (s.type === 'person') drawPerson(ctx, rng, s.person, s.x, s.y, s.s);
+    else if (s.type === 'art') drawArt(ctx, s.key, s.x, s.y, s.h);
+    else if (s.type === 'folk') drawArt(ctx, s.key, s.x, s.y, s.h, { flip: s.flip });
     else drawProp(ctx, rng, s.key, s.x, s.y, s.s);
   }
   return cv;

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Finn Harald! — kongespelet</title>
-<meta name="description" content="Eit leite-spel: du er Kong Harald, bortkomen i di eiga folkemengd. Nytt brett kvar gong.">
+<title>Kong Harald — vink eller gå under</title>
+<meta name="description" content="Du er Kong Harald, bortkomen i di eiga folkemengd. Finn tinga dine, hald folkekjærleiken og verdigheita oppe, og hugs å vinke.">
 <meta name="theme-color" content="#f4f1ea">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>👑</text></svg>">
 <link rel="stylesheet" href="./styles.css">
@@ -13,38 +13,49 @@
 <div id="app">
 
   <header class="head">
-    <div class="crown">
-      <svg viewBox="0 0 40 26" aria-hidden="true"><path d="M4 22h32M6 21l-2-14 8 7 6-11 6 11 8-7-2 14z" fill="none" stroke="#1d1b18" stroke-width="1.6" stroke-linejoin="round"/></svg>
-    </div>
-    <h1>Finn Harald!</h1>
-    <p class="sub">Ei folkemengd, ein konge, fleire ting å leite etter.</p>
+    <img class="logo" src="./assets/logo.png" alt="Kong Harald">
+    <p class="sub">vink eller gå under</p>
   </header>
 
   <div class="hudbar">
-    <div class="pop" title="Folkegunst">
-      <span class="popLbl">Folkegunst</span>
-      <div class="poptrack"><div id="popbar"></div></div>
+    <div class="meters">
+      <div class="meter" title="Folkekjærleik">
+        <img src="./assets/hjarte-lite.png" alt="">
+        <div class="track"><div id="folkbar" class="fill folk"></div></div>
+      </div>
+      <div class="meter" title="Verdigheit">
+        <img src="./assets/stjerne.png" alt="">
+        <div class="track"><div id="verdbar" class="fill verd"></div></div>
+      </div>
     </div>
+
+    <div id="lives" class="lives" title="Liv"></div>
+
     <div class="stats">
-      <span>Nivå <b id="lvl">1</b></span>
-      <span>Poeng <b id="score">0</b></span>
-      <span class="hide-sm">Beste <b id="best">0</b></span>
+      <span class="badge-lvl">Nivå <b id="lvl">1</b></span>
+      <span class="badge-score"><b id="score">0</b></span>
       <span id="seedTag" class="seed"></span>
     </div>
+
     <div class="tools">
       <button id="hintBtn" class="btn">Hint (3)</button>
       <button id="zoomOut" class="btn sq" title="Zoom ut">−</button>
       <button id="zoomIn" class="btn sq" title="Zoom inn">+</button>
-      <button id="muteBtn" class="btn sq" title="Lyd">🔊</button>
-      <button id="newBtn" class="btn sq" title="Nytt spel">⟳</button>
+      <button id="muteBtn" class="btn ico" title="Lyd"><img src="./assets/lyd-pa.png" alt="lyd"></button>
+      <button id="pauseBtn" class="btn ico" title="Pause"><img src="./assets/pause.png" alt="pause"></button>
+      <button id="newBtn" class="btn ico" title="Nytt spel"><img src="./assets/restart.png" alt="nytt spel"></button>
     </div>
   </div>
 
   <div id="stage">
     <canvas id="board"></canvas>
     <div id="toast"></div>
+    <div id="event"></div>
+    <div id="storm" hidden></div>
     <div id="overlay"></div>
-    <button id="waveBtn" class="wave">👋 VINK<span>mellomrom</span></button>
+    <button id="waveBtn" class="wave" title="Vink (mellomrom)">
+      <img src="./assets/vinkknapp.png" alt="Vink">
+    </button>
   </div>
 
   <div id="checklist"></div>

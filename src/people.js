@@ -46,39 +46,6 @@ export function makePerson(rng, opts = {}) {
         pose: 'wave', beard: false, scarf: null, stout: 1.04, skin: '#f0cca6', flip: false, prop: null,
       });
       break;
-    case 'sonja':
-      Object.assign(p, {
-        kind: 'adult', h: 41, hair: '#e6e2d8', hairStyle: 'bun', coat: '#fbf7ec', coatStyle: 'dress',
-        pants: '#fbf7ec', shoes: '#e8e2d4', hat: 'crown', glasses: false, sash: null,
-        pose: 'bouquet', stout: 1.0, skin: '#f7dcc0', flip: false, prop: null,
-      });
-      break;
-    case 'macarena':
-      Object.assign(p, {
-        kind: 'adult', h: 40, coat: '#d4453a', coatStyle: 'sweater', pants: '#3a6ea5',
-        hat: null, pose: 'macarena', hairStyle: 'spiky', prop: null, glasses: false,
-      });
-      break;
-    case 'durek':
-      Object.assign(p, {
-        kind: 'adult', h: 44, hair: '#1b1b1b', hairStyle: 'long', coat: '#7b4fa8', coatStyle: 'coat',
-        pants: '#4a2f6b', shoes: '#2b2b2d', hat: null, glasses: 'shades', beard: true,
-        sash: null, pose: 'crystal', stout: 1.06, skin: '#8d5a3b', flip: false, prop: null,
-      });
-      break;
-    case 'ksv':
-      Object.assign(p, {
-        kind: 'adult', h: 45, hair: '#2f2419', hairStyle: 'short', coat: '#1e1e22', coatStyle: 'suit',
-        pants: '#1e1e22', shoes: '#161618', hat: null, glasses: 'shades', beard: false,
-        sash: null, pose: 'guard', stout: 1.14, prop: null, earpiece: true,
-      });
-      break;
-    case 'presse':
-      Object.assign(p, {
-        kind: 'adult', h: 42, coat: rng.pick(['#3f4448', '#5a5f63', '#2f3a4a']), coatStyle: 'jacket',
-        hat: rng.pick([null, 'cap']), pose: 'camera', prop: null, sash: null,
-      });
-      break;
     default:
       break;
   }
