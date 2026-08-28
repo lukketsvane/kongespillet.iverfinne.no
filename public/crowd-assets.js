@@ -1,11 +1,17 @@
 (()=>{
-  const assets=[...new Set(window.__FH_CROWD||[])];
+  const assets=[...new Set(window.__FH_CROWD||[])]
+    .filter(src=>/^data:image\/(?:webp|png);base64,/i.test(src))
+    .slice(0,24);
   if(!assets.length)return;
 
   const HARALD=[
     '/game-assets/harald/01_baby_harald.png','/game-assets/harald/02_child_harald.png','/game-assets/harald/03_young_prince.png','/game-assets/harald/04_gala_uniform.png','/game-assets/harald/05_wave.png','/game-assets/harald/06_speech_podium.png','/game-assets/harald/07_walk_left.png','/game-assets/harald/08_walk_right.png','/game-assets/harald/09_worried.png','/game-assets/harald/10_happy.png','/game-assets/harald/11_rubber_boots.png','/game-assets/harald/12_with_cane.png','/game-assets/harald/13_old_with_cane.png','/game-assets/harald/14_balcony_wave.png','/game-assets/harald/15_in_sira.png','/game-assets/harald/16_reading_newspaper.png','/game-assets/harald/17_victory_pose.png','/game-assets/harald/18_game_over.png'
   ];
   const UI=['/game-assets/ui/crown.png','/game-assets/ui/flag.png','/game-assets/ui/cane.png','/game-assets/ui/rubber_boots.png','/game-assets/ui/microphone.png'];
+
+  let ready=[];
+  let scheduled=false;
+  let observer=null;
 
   function hash(s){
     let h=2166136261;
@@ -16,61 +22,121 @@
     return h>>>0;
   }
 
-  function rng(seed){
-    let x=seed||1;
-    return()=>{
-      x^=x<<13;x^=x>>>17;x^=x<<5;
-      return(x>>>0)/4294967296;
-    };
-  }
-
-  function preload(){
-    if(window.__FH_ASSET_PRELOAD)return;
-    const queue=[...new Set([...assets,...HARALD,...UI])];
-    const state=window.__FH_ASSET_PRELOAD={total:queue.length,loaded:0,failed:0,done:false};
-    let cursor=0;
-    const worker=async()=>{
-      while(cursor<queue.length){
-        const src=queue[cursor++];
-        try{
-          const img=new Image();
-          img.decoding='async';
-          img.src=src;
-          if(img.decode)await img.decode();
-          else await new Promise(resolve=>{img.onload=img.onerror=resolve});
-          state.loaded+=1;
-        }catch{
-          state.failed+=1;
-        }
-      }
-    };
-    state.promise=Promise.all(Array.from({length:Math.min(8,queue.length)},worker)).then(()=>{
-      state.done=true;
-      document.documentElement.dataset.fhAssetsReady='1';
-      return state;
+  function schedule(delay=0){
+    if(delay){
+      window.setTimeout(()=>schedule(),delay);
+      return;
+    }
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(()=>{
+      scheduled=false;
+      run();
     });
   }
 
+  function decodeOne(src){
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.decoding='async';
+      let done=false;
+      const finish=ok=>{
+        if(done)return;
+        done=true;
+        img.onload=null;
+        img.onerror=null;
+        resolve(ok?src:null);
+      };
+      img.onload=()=>{
+        if(typeof img.decode==='function'){
+          img.decode().then(()=>finish(true)).catch(()=>finish(true));
+        }else finish(true);
+      };
+      img.onerror=()=>finish(false);
+      img.src=src;
+      if(img.complete&&img.naturalWidth)finish(true);
+    });
+  }
+
+  async function preloadCrowd(){
+    const state=window.__FH_ASSET_PRELOAD={
+      total:assets.length+HARALD.length+UI.length,
+      loaded:0,
+      failed:0,
+      done:false
+    };
+
+    let cursor=0;
+    const good=[];
+    const worker=async()=>{
+      while(cursor<assets.length){
+        const src=assets[cursor++];
+        const ok=await decodeOne(src);
+        if(ok){
+          good.push(ok);
+          state.loaded++;
+        }else state.failed++;
+      }
+    };
+
+    await Promise.all(Array.from({length:Math.min(3,assets.length)},worker));
+    ready=good;
+
+    [...HARALD,...UI].forEach(src=>{
+      const img=new Image();
+      img.decoding='async';
+      img.onload=()=>{state.loaded++};
+      img.onerror=()=>{state.failed++};
+      img.src=src;
+    });
+
+    state.done=true;
+    state.crowdReady=ready.length;
+    document.documentElement.dataset.fhAssetsReady='1';
+    schedule();
+  }
+
+  function pick(seed){
+    if(!ready.length)return null;
+    return ready[hash(seed)%ready.length];
+  }
+
   function applyCrowd(){
-    document.querySelectorAll('img.crowd-figure:not(.fh-extra-decoy)').forEach((img,i)=>{
+    if(!ready.length)return;
+    const imgs=document.querySelectorAll('img.crowd-figure');
+    imgs.forEach((img,i)=>{
+      if(img.closest('.fh-extra-crowd'))return;
       if(img.classList.contains('is-prop')&&!img.classList.contains('fh-real-crowd'))return;
 
       const current=img.getAttribute('src')||'';
-      const original=img.dataset.originalSprite||(!current.startsWith('data:image/')?current:'')||img.dataset.fhCrowdOriginal||'';
+      const remembered=img.dataset.fhCrowdOriginal||'';
+      const original=
+        img.dataset.originalSprite||
+        (current&&!current.startsWith('data:image/')?current:'')||
+        remembered;
+
       if(!original)return;
 
-      if(original!==img.dataset.fhCrowdOriginal){
-        img.dataset.fhCrowdOriginal=original;
-        delete img.dataset.fhCrowdAsset;
-      }
+      const key=`${original}|${img.style.left}|${img.style.top}|${i}`;
+      if(img.dataset.fhCrowdKey===key&&img.classList.contains('fh-real-crowd'))return;
 
-      const seed=`${img.dataset.fhCrowdOriginal}|${img.style.left}|${img.style.top}|${i}`;
-      const n=hash(seed)%assets.length;
-      const target=assets[n];
+      const target=pick(key);
+      if(!target)return;
 
+      img.dataset.fhCrowdOriginal=original;
+      img.dataset.fhCrowdKey=key;
       img.classList.add('is-prop','fh-real-crowd');
-      img.dataset.fhCrowdAsset=String(n);
-      if(current!==target)img.setAttribute('src',target);
+      img.decoding='async';
+      img.loading='eager';
+
+      if(current!==target){
+        img.onerror=()=>{
+          img.onerror=null;
+          img.classList.remove('fh-real-crowd');
+          if(original)img.src=original;
+        };
+        img.src=target;
+      }
     });
   }
 
@@ -78,79 +144,10 @@
     document.querySelectorAll('.game-footer>p,.first-instruction').forEach(el=>el.remove());
   }
 
-  function getAge(){
-    return Math.max(0,Number(document.querySelector('.age-lockup strong')?.textContent)||0);
-  }
-
-  function basePeople(board){
-    return board.querySelectorAll('img.crowd-figure.fh-real-crowd:not(.fh-extra-decoy),img.crowd-figure:not(.is-prop):not(.fh-extra-decoy)').length+1;
-  }
-
-  function harder(){
-    const board=document.querySelector('.crowd-board');
-    const target=board?.querySelector('.harald-target');
-    if(!board||!target)return;
-
-    const age=getAge();
-    const targetLeft=target.style.left||'';
-    const targetTop=target.style.top||'';
-    const key=`${age}|${targetLeft}|${targetTop}`;
-
-    const currentWidth=parseFloat(target.style.width)||10;
-    const oldApplied=parseFloat(target.dataset.fhAppliedWidth||'');
-    let baseWidth=parseFloat(target.dataset.fhBaseWidth||'');
-    if(!Number.isFinite(baseWidth)||!Number.isFinite(oldApplied)||Math.abs(currentWidth-oldApplied)>.02){
-      baseWidth=currentWidth;
-      target.dataset.fhBaseWidth=String(baseWidth);
-    }
-    const targetFactor=age===0?1:Math.max(.68,1-Math.min(.32,Math.log2(age+1)*.045));
-    const nextWidth=Math.max(3.8,baseWidth*targetFactor);
-    target.dataset.fhAppliedWidth=String(nextWidth);
-    if(Math.abs(currentWidth-nextWidth)>.02)target.style.width=`${nextWidth}%`;
-
-    const originals=[...board.querySelectorAll('img.crowd-figure.fh-real-crowd:not(.fh-extra-decoy)')];
-    const heights=originals.map(el=>parseFloat(el.style.height)).filter(Number.isFinite).sort((a,b)=>a-b);
-    const median=heights.length?heights[Math.floor(heights.length/2)]:14;
-    const extra=age===0?0:Math.min(110,Math.floor(age*1.15+Math.sqrt(age)*2.5));
-
-    let holder=board.querySelector('.fh-extra-crowd');
-    if(!holder){
-      holder=document.createElement('div');
-      holder.className='fh-extra-crowd';
-      holder.setAttribute('aria-hidden','true');
-      board.insertBefore(holder,target);
-    }
-
-    if(holder.dataset.round!==key||Number(holder.dataset.count)!==extra){
-      holder.dataset.round=key;
-      holder.dataset.count=String(extra);
-      holder.replaceChildren();
-      const random=rng(hash(`harder|${key}`));
-      const frag=document.createDocumentFragment();
-      for(let i=0;i<extra;i++){
-        const img=document.createElement('img');
-        const x=3.5+random()*93;
-        const y=5+random()*90;
-        const h=Math.max(6.2,median*(.72+random()*.52));
-        const front=age>28&&random()<Math.min(.11,age/900);
-        img.alt='';
-        img.draggable=false;
-        img.src=assets[Math.floor(random()*assets.length)];
-        img.className='crowd-figure is-prop fh-real-crowd fh-extra-decoy';
-        img.style.left=`${x}%`;
-        img.style.top=`${y}%`;
-        img.style.height=`${h}%`;
-        img.style.zIndex=String(front?145+Math.floor(random()*15):10+Math.round(y));
-        img.style.transform=`translate(-50%, -50%) rotate(${(-5+random()*10).toFixed(2)}deg) scaleX(${random()<.5?-1:1})`;
-        frag.appendChild(img);
-      }
-      holder.appendChild(frag);
-    }
-
-    const total=basePeople(board)+extra;
-    const folk=document.querySelector('.game-footer .record strong');
-    if(folk&&folk.textContent!==String(total))folk.textContent=String(total);
-    board.setAttribute('aria-label',`Folkemengd med ${total} menneske. Finn og trykk på Harald.`);
+  function tuneDifficulty(){
+    const age=Math.max(0,Number(document.querySelector('.age-lockup strong')?.textContent)||0);
+    const scale=age===0?1:Math.max(.82,1-Math.log2(age+1)*.026);
+    document.documentElement.style.setProperty('--fh-target-scale',String(scale));
   }
 
   function style(){
@@ -158,29 +155,66 @@
     const s=document.createElement('style');
     s.id='fh-crowd-style';
     s.textContent=`
+      .crowd-board{contain:layout paint style}
+      .crowd-figure{image-rendering:auto;backface-visibility:hidden}
       .crowd-figure.is-prop.fh-real-crowd{opacity:1!important}
-      .fh-extra-crowd{position:absolute;inset:0;pointer-events:none}
-      .fh-extra-crowd .fh-extra-decoy{pointer-events:auto;user-select:none;-webkit-user-select:none}
+      .harald-target{scale:var(--fh-target-scale,1)}
       .game-footer{grid-template-columns:auto auto!important;justify-content:space-between!important}
       .game-footer>p,.first-instruction{display:none!important}
       .game-footer .record{justify-self:end}
+      .fh-extra-crowd{display:none!important}
+      @media (max-width:700px),(pointer:coarse){
+        .crowd-figure.is-wandering{animation:none!important;transition:none!important}
+      }
     `;
     document.head.appendChild(s);
+  }
+
+  function removeLegacyExtras(){
+    document.querySelectorAll('.fh-extra-crowd').forEach(el=>el.remove());
   }
 
   function run(){
     style();
     cleanUI();
+    removeLegacyExtras();
+    tuneDifficulty();
     applyCrowd();
-    harder();
   }
 
-  preload();
+  function watch(){
+    const root=document.querySelector('.game-shell')||document.body;
+    if(!root||observer)return;
+    observer=new MutationObserver(mutations=>{
+      for(const m of mutations){
+        if(m.type==='childList'&&(m.addedNodes.length||m.removedNodes.length)){
+          schedule();
+          break;
+        }
+      }
+    });
+    observer.observe(root,{childList:true,subtree:true});
+  }
+
+  document.addEventListener('error',event=>{
+    const img=event.target;
+    if(!(img instanceof HTMLImageElement)||!img.matches('img.crowd-figure'))return;
+    if(img.closest('.harald-target'))return;
+    const fallback=pick(`${img.dataset.fhCrowdOriginal||img.src}|fallback`);
+    if(fallback&&img.src!==fallback){
+      img.onerror=null;
+      img.src=fallback;
+      img.classList.add('is-prop','fh-real-crowd');
+    }else{
+      img.style.visibility='hidden';
+    }
+  },true);
+
+  document.addEventListener('pointerup',event=>{
+    if(event.target instanceof Element&&event.target.closest('.harald-target'))schedule(280);
+  },true);
+
   run();
-  new MutationObserver(run).observe(document.documentElement,{
-    childList:true,
-    subtree:true,
-    attributes:true,
-    attributeFilter:['src','style']
-  });
+  watch();
+  preloadCrowd();
 })();
