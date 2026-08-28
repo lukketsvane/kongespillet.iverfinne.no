@@ -66,6 +66,8 @@ const UI_ART = [
   'applaus', 'svettedrope', 'harald', 'folkemengd', 'hero-banner',
   'avisframside', 'sladrespalte', 'tv-debatt', 'kongehusbrak', 'radgivar',
   'jublande', 'skeptikar', 'folk-lag', 'folk-hog', 'verd-lag', 'verd-hog',
+  // frå det store master-arket
+  'master/ikon/krone', 'master/panel/krona-fall-av', 'master/humor/pluss3', 'master/humor/minus3',
 ];
 
 export const ALL = [...new Set([...Object.keys(OBJECTS), ...Object.keys(HARALDS), ...FOLK, ...HAZARD_ART, ...UI_ART, 'harald-gameover'])];

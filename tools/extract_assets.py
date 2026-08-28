@@ -91,17 +91,18 @@ def is_caption(im, mask, box):
     fargelagde eller høgare enn dei er breie, så dei slepp unna."""
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
-    if h > 80 or h < 8 or w < 40 or w / h < 1.7:
+    if h > 80 or h < 8 or w < 22 or w / h < 1.7:
         return False
     a = np.asarray(im.crop(box).convert('RGB')).astype(np.int16)
     ink = a.min(axis=2) < 200
     if ink.sum() < 20:
         return False
     sat = (a.max(axis=2) - a.min(axis=2))[ink]
-    return float(sat.mean()) < 6.0
+    # JPEG-arka har litt fargestøy i blekket, så terskelen må tole det
+    return float(sat.mean()) < 14.0
 
 
-def row_gaps(mask, box, min_gap=6):
+def row_gaps(mask, box, min_gap=4):
     x0, y0, x1, y1 = box
     rows = mask[y0:y1, x0:x1].any(axis=1)
     gaps = []

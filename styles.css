@@ -73,6 +73,8 @@ html, body {
 .fill { height: 100%; transition: width .18s linear, background .3s; }
 .fill.folk { background: var(--green); }
 .fill.verd { background: var(--gold); }
+.fill.krone { background: #c98b2f; }
+.meter.krone img { transform-origin: 50% 85%; transition: transform .25s ease-out; }
 .fill.low { background: var(--red); }
 
 .mood { height: 40px; width: auto; object-fit: contain; }

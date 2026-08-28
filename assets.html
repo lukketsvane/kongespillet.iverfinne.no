@@ -28,10 +28,15 @@
   <p class="sub">Handteikna ark skorne opp til sprites, og ei folkemengd generert i kode.</p>
 
   <h2>Teikna ressursar frå arka</h2>
-  <p class="note">Dei fem ressurs-arka er skorne opp automatisk til <b id="artCount">0</b> einskilde
-  sprites med gjennomsiktig papir (<code>tools/extract_assets.py</code>). Desse er tinga du leitar
-  etter, farane og heile grensesnittet.</p>
+  <p class="note">Arka er skorne opp automatisk til <b id="artCount">0</b> einskilde sprites med
+  gjennomsiktig papir (<code>tools/extract_assets.py</code> og <code>tools/extract_master.py</code>).
+  Desse er tinga du leitar etter, Harald-brikkene, farane og heile grensesnittet.
+  Under kjem òg alt frå det store master-arket.</p>
   <div class="grid" id="art"></div>
+
+  <h2>Master-arket</h2>
+  <p class="note">NPC-ar, stader, båtar, ting, uttrykk, hendingskort og ikon.</p>
+  <div class="grid" id="master"></div>
 
   <h2>Folkemengda — teikna i kode</h2>
   <p class="note">Ho kan ikkje teiknast for hand: det er opptil 1700 personar per brett.
@@ -72,6 +77,16 @@ for (const [name, meta] of entries) {
   fig.innerHTML = `<img src="./assets/${name}.png" alt="${name}" style="max-width:110px;max-height:96px;object-fit:contain">
     <figcaption>${name}</figcaption>`;
   artWrap.appendChild(fig);
+}
+
+const masterMan = await fetch('./assets/master/manifest.json').then((r) => r.json());
+const masterWrap = document.querySelector('#master');
+document.querySelector('#artCount').textContent = entries.length + Object.keys(masterMan).length;
+for (const name of Object.keys(masterMan).sort()) {
+  const fig = document.createElement('figure');
+  fig.innerHTML = `<img src="./assets/master/${name}.png" alt="${name}" style="max-width:110px;max-height:96px;object-fit:contain">
+    <figcaption>${name}</figcaption>`;
+  masterWrap.appendChild(fig);
 }
 
 import { makePerson, drawPerson } from './src/people.js';

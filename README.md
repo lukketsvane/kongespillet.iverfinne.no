@@ -36,10 +36,14 @@ og folkemengda som blir generert i kode.
 | Hint | `h` — kostar verdigheit, tre per spel |
 | Pause | `p` eller `Esc` |
 
+**Krona** er klokka. Ho sit laust frå første sekund, og di lenger du leitar,
+di lenger vipper ho — du ser henne gli av ikonet i hud-en. Kvart funn set
+henne betre på plass, Harald sjølv mest av alt. Fell ho av, kostar det eit liv.
+
 **Folkekjærleiken** renn ut heile tida, og du fyller han med å vinke. Men folk
 gjennomskodar autopilot: kvar vink tel mindre enn den førre, og vinkar du i
-eitt sett, ryk **verdigheita** i staden. Går den eine måleren i botn, mistar du
-eit liv. Tre liv, så er det over.
+eitt sett, ryk **verdigheita** i staden. Går ein av dei tre målarane i botn,
+mistar du eit liv. Tre liv, så er det over.
 
 Undervegs:
 
@@ -61,9 +65,25 @@ kaffikoppen der berre for å lure deg.
 ## Ressursane
 
 ```
-assets/                 109 sprites skorne ut av dei seks ressurs-arka
+assets/                 109 sprites frå dei seks arka
+assets/master/          121 sprites frå det store master-arket, sortert i mapper
 tools/extract_assets.py skjer arka opp: finn kvar teikning, kuttar bilettekstane,
                         gjer papiret gjennomsiktig og gir filene namn
+tools/extract_master.py same for master-arket, som er så tett at radene må
+                        delast på blanke kolonnar
+tools/build_pack.py     sorterer alt i kategoriar og pakkar det til ein zip
+```
+
+Master-arket gir NPC-ar (Sonja, Durek, statsministrar, slottsvakt, protestar),
+stader (Slottet, Skaugum, Nidarosdomen, Stortinget, fjorden), båtar (Sira,
+Fram X, Kongeskipet), 13 Harald-sprites, 10 aldrar, 10 andletsuttrykk,
+hendingskort, målarar, vêr, bobler og eit fullt ikonsett.
+
+Den samla pakka (249 filer i 16 kategoriar, med kjeldearka som tapsfri webp og
+dei ferdigrendra nivåbretta med hitboksar) blir bygd slik:
+
+```
+python3 tools/build_pack.py --kjelder <ark> --master <game-assets-master> --nivaa <nivaapakkar>
 ```
 
 Arka er teikna for hand (objekt og bonus, folket og vink, fiendar og hendingar,
