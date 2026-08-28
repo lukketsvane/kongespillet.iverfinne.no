@@ -50,11 +50,10 @@ export const HARALDS = {
   'harald-baby': { h: 30, label: 'baby-Harald' },
 };
 
-// Folk frå arket som blir strødde inn i mengda som store, teikna figurar.
-export const FOLK = [
-  'barn', 'eldre-dame', 'mann-med-flagg', 'turist', 'ungdom', 'bunadperson',
-  'skeptikar', 'jublande', 'fotograf', 'to-barn', 'eldre-herre', 'oslobuar',
-];
+// Dei gamle person-cropsa frå teiknearka hadde med scan-støy, nabostrekar og
+// feil bounding boxes. Dei er med vilje slått heilt av. Folkemengda blir i
+// staden generert reint og tilfeldig i kode via people.js.
+export const FOLK = [];
 
 export const HAZARD_ART = ['paparazzi', 'journalist', 'sjaman', 'vakt', 'skandalesky', 'regnstorm', 'some-storm', 'kommentarfelt', 'demonstrant', 'republikanar'];
 
