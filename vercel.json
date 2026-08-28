@@ -1,10 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "alias": ["kongespillet.iverfinne.no"],
-  "rewrites": [
-    {
-      "source": "/:path*",
-      "destination": "https://finn-harald.iver-raknes-finne.chatgpt.site/:path*"
-    }
-  ]
+  "alias": ["kongespillet.iverfinne.no"]
 }
