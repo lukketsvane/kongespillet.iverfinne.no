@@ -12,8 +12,6 @@ window.__FH_CROWD.push(
   'https://static.wikia.nocookie.net/waldo/images/8/89/Cowboy.png/revision/latest?cb=20260121223500',
   'https://static.wikia.nocookie.net/waldo/images/8/8c/Genie.png/revision/latest?cb=20260120231545',
   'https://static.wikia.nocookie.net/waldo/images/7/70/Mummy.png/revision/latest?cb=20260117060047',
-  'https://static.wikia.nocookie.net/waldo/images/8/84/Gorilla.png/revision/latest?cb=20260122165232',
   'https://static.wikia.nocookie.net/waldo/images/f/f7/Vikings.png/revision/latest?cb=20260116213218',
-  'https://static.wikia.nocookie.net/waldo/images/6/66/Mermaid.png/revision/latest?cb=20260118035418',
   'https://static.wikia.nocookie.net/waldo/images/f/fb/Witches.png/revision/latest?cb=20260116212831'
 );
