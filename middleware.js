@@ -27,6 +27,7 @@ export async function middleware(request) {
     const tags = [
       '<script src="/enhance.js" defer></script>',
       '<script src="/usernames.js" defer></script>',
+      '<script src="/music.js" defer></script>',
     ].filter((tag) => !html.includes(tag.match(/src="([^"]+)/)?.[1] || ''));
 
     if (tags.length) {
