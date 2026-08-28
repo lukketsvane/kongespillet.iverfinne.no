@@ -42,10 +42,11 @@
   function updateButton(){
     const b=document.querySelector('.fh-music');
     if(!b)return;
-    b.textContent=muted?'♪ MUSIKK AV':'♪ MUSIKK PÅ';
+    b.textContent='♪';
+    b.classList.toggle('is-muted',muted);
     b.setAttribute('aria-pressed',String(!muted));
     b.setAttribute('aria-label',muted?'Slå på musikken':'Slå av musikken');
-    b.title=`Lydspor ${index+1} av ${TRACKS.length}`;
+    b.title=muted?'Musikk av':'Musikk på';
   }
 
   function ensureButton(){
@@ -78,9 +79,9 @@
     s.id='fh-music-style';
     s.textContent=`
       .masthead{position:relative}
-      .fh-music{position:absolute;right:82px;bottom:-18px;border:0;background:transparent;color:#6e695e;font:700 9px/1 system-ui;letter-spacing:.11em;padding:7px 0;z-index:9;white-space:nowrap}
-      .fh-music:focus-visible{outline:1px solid #81796d;outline-offset:3px}
-      @media(max-width:380px){.fh-music{right:76px;font-size:8px}}
+      .fh-music{position:absolute;right:34px;bottom:-22px;width:30px;height:30px;display:grid;place-items:center;border:0;background:transparent;color:#6e695e;font:500 22px/1 Georgia;padding:0;z-index:9;transition:opacity 120ms linear}
+      .fh-music.is-muted{opacity:.32}
+      .fh-music:focus-visible{outline:1px solid #81796d;outline-offset:1px}
     `;
     document.head.appendChild(s);
   }
