@@ -3,15 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "description": "Finn Harald! — proxied to the published ChatGPT Site.",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "build": "next build",
     "start": "next start",
     "playtest": "node tools/playtest.mjs"
   },
   "dependencies": {
-    "next": "15.5.2",
-    "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "next": "15.5.21",
+    "react": "19.1.5",
+    "react-dom": "19.1.5"
   },
   "devDependencies": {
     "playwright": "1.49.1"
