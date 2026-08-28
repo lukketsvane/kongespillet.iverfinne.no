@@ -28,6 +28,12 @@ export async function middleware(request) {
       '<script src="/enhance.js" defer></script>',
       '<script src="/usernames.js" defer></script>',
       '<script src="/music.js" defer></script>',
+      '<script src="/crowd-01.js" defer></script>',
+      '<script src="/crowd-02.js" defer></script>',
+      '<script src="/crowd-03.js" defer></script>',
+      '<script src="/crowd-04.js" defer></script>',
+      '<script src="/crowd-05.js" defer></script>',
+      '<script src="/crowd-assets.js" defer></script>',
     ].filter((tag) => !html.includes(tag.match(/src="([^"]+)/)?.[1] || ''));
 
     if (tags.length) {
