@@ -21,6 +21,9 @@ const state = {
   best: Number(localStorage.getItem('kongespelet.best') || 0),
   folk: 72,
   verd: 88,
+  krone: 100,
+  kroneSek: 70,
+  kroneVarsla: false,
   lives: START_LIVES,
   combo: 0,
   seed: 0,
@@ -100,6 +103,9 @@ function newLevel(level, seed) {
   state.levelTime = 0;
   state.combo = 0;
   state.waveEff = 1;
+  state.krone = 100;
+  state.kroneSek = Math.max(30, 78 - level * 5);
+  state.kroneVarsla = false;
   state.ring = null;
   state.hazards = { press: null, sjaman: null, vakt: null, storm: null };
   state.timers = {
@@ -122,6 +128,7 @@ function startGame(seed) {
   state.score = 0;
   state.folk = 72;
   state.verd = 88;
+  state.krone = 100;
   state.lives = START_LIVES;
   state.hints = 3;
   newLevel(1, seed);
@@ -184,6 +191,12 @@ function updateHud() {
   $('#score').textContent = Math.round(state.score);
   $('#folkbar').style.width = Math.max(0, Math.min(100, state.folk)) + '%';
   $('#verdbar').style.width = Math.max(0, Math.min(100, state.verd)) + '%';
+  const kr = Math.max(0, Math.min(100, state.krone));
+  $('#kronebar').style.width = kr + '%';
+  $('#kronebar').classList.toggle('low', kr < 30);
+  // krona glir og vippar meir og meir av hovudet
+  const tip = (100 - kr) / 100;
+  $('#kroneikon').style.transform = `translate(${tip * 6}px, ${tip * 3}px) rotate(${tip * 62}deg)`;
   $('#folkbar').classList.toggle('low', state.folk < 30);
   $('#verdbar').classList.toggle('low', state.verd < 30);
   const mood = $('#mood');
@@ -435,6 +448,7 @@ function tap(sx, sy) {
         toast('Ei stjerne på brystet.', 'good', 'stjerne');
       }
       state.score += 90;
+      state.krone = Math.min(100, state.krone + 5);
       return updateHud();
     }
     state.combo = Math.min(5, state.combo + 1);
@@ -442,6 +456,9 @@ function tap(sx, sy) {
     state.score += pts;
     state.folk = Math.min(100, state.folk + (t.item === 'harald' ? 12 : 5));
     state.verd = Math.min(100, state.verd + 3);
+    // kvart funn set krona betre på plass
+    state.krone = Math.min(100, state.krone + (t.item === 'harald' ? 16 : 9));
+    state.kroneVarsla = state.krone > 26 ? false : state.kroneVarsla;
     toast(t.item === 'harald' ? `DER ER HAN! +${pts}` : `Funne! +${pts} (x${state.combo})`, 'good', 'applaus');
     updateChecklist();
     updateHud();
@@ -479,6 +496,8 @@ function loseLife(why) {
   if (state.lives <= 0) return gameOver(why);
   state.folk = 58;
   state.verd = 72;
+  state.krone = 62;
+  state.kroneVarsla = false;
   state.hazards = { press: null, sjaman: null, vakt: null, storm: null };
   hideStorm();
   eventPanel('feil', why + ' Eitt liv borte.', 'radgivar');
@@ -488,7 +507,7 @@ function loseLife(why) {
 function levelClear() {
   state.phase = 'clear';
   const timeBonus = Math.max(0, Math.round(600 - state.levelTime * 6));
-  const meterBonus = Math.round((state.folk + state.verd) * 4);
+  const meterBonus = Math.round((state.folk + state.verd) * 3 + state.krone * 6);
   state.score += timeBonus + meterBonus;
   sfx.win();
   saveBest();
@@ -500,7 +519,7 @@ function levelClear() {
       <p class="lead">Alt funne på ${state.levelTime.toFixed(1)} s.</p>
       <ul class="tally">
         <li><span>Tidsbonus</span><b>+${timeBonus}</b></li>
-        <li><span>Folk og verdigheit</span><b>+${meterBonus}</b></li>
+        <li><span>Folk, verdigheit og krone</span><b>+${meterBonus}</b></li>
         <li><span>Sum</span><b>${Math.round(state.score)}</b></li>
       </ul>
       <p class="lead">Og no: <b>vink til folket</b>.</p>
@@ -525,9 +544,9 @@ function gameOver(why) {
   saveBest();
   showOverlay(`
     <div class="card">
-      <img class="king big" src="${artUrl('harald-gameover')}" alt="">
-      <h2>Gått under</h2>
-      <p class="lead">${why}</p>
+      <img class="king big" src="${artUrl(why.startsWith('Krona') ? 'harald-gameover' : 'harald-gameover')}" alt="">
+      <h2>${why.startsWith('Krona') ? 'Krona fall av' : 'Gått under'}</h2>
+      <p class="lead">${why.startsWith('Krona') ? 'Du brukte for lang tid. Folket slutta å vinke tilbake.' : why}</p>
       <ul class="tally">
         <li><span>Nivå</span><b>${state.level}</b></li>
         <li><span>Poeng</span><b>${Math.round(state.score)}</b></li>
@@ -562,6 +581,17 @@ function update(dt) {
   let folkDrain = 1.3 + state.level * 0.2;
   let verdDrain = 0.35;
   const hz = state.hazards;
+
+  // Kjernen: di lenger du leitar, di laussare sit krona.
+  state.krone -= (100 / state.kroneSek) * dt;
+  if (state.krone < 26 && !state.kroneVarsla) {
+    state.kroneVarsla = true;
+    toast('Krona sit laust! Finn han no.', 'warn', 'master/ikon/krone');
+  }
+  if (state.krone <= 0) {
+    state.krone = 0;
+    loseLife('Krona fall av.');
+  }
 
   if (hz.press) {
     hz.press.t += dt;
