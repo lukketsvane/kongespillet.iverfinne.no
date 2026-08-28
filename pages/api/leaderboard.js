@@ -141,6 +141,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('leaderboard error', error);
-    return res.status(503).json({ error: 'Leaderboard unavailable' });
+    return res.status(503).json({
+      error: 'Leaderboard unavailable',
+      code: connectionString ? 'database_error' : 'missing_database_env'
+    });
   }
 }
