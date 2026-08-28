@@ -7,7 +7,12 @@ tåkelegg torget og kommentarfeltet kokar.
 
 Folkemengda blir trekt på nytt kvar runde: frå knapt 600 personar på nivå 1 til
 over 1700 på nivå 9, alle generert i kode. Tinga du leitar etter, farane og
-heile grensesnittet er handteikna ressursar, skorne ut av fem ressurs-ark.
+heile grensesnittet er handteikna ressursar, skorne ut av seks ressurs-ark.
+
+Og det er ikkje ein kva-som-helst-Harald du leitar etter. Kvar runde er det
+**éin bestemt brikke** som er gøymd — Harald i gummistøvlar, Harald med stokk,
+baby-Harald — og lista viser kven. Dei andre brikkene står i mengda som
+lokkekongar. Klikkar du feil konge, kostar det.
 
 ## Spele
 
@@ -26,7 +31,7 @@ og folkemengda som blir generert i kode.
 | Handling | Korleis |
 | --- | --- |
 | Leite | dra for å flytte deg, rull eller knip for å zoome |
-| Finne | klikk på tingen når du ser han |
+| Finne | klikk på tingen — eller på rett Harald — når du ser han |
 | Vinke | `mellomrom` eller VINK-knappen |
 | Hint | `h` — kostar verdigheit, tre per spel |
 | Pause | `p` eller `Esc` |
@@ -56,13 +61,13 @@ kaffikoppen der berre for å lure deg.
 ## Ressursane
 
 ```
-assets/                 89 sprites skorne ut av dei fem ressurs-arka
+assets/                 109 sprites skorne ut av dei seks ressurs-arka
 tools/extract_assets.py skjer arka opp: finn kvar teikning, kuttar bilettekstane,
                         gjer papiret gjennomsiktig og gir filene namn
 ```
 
 Arka er teikna for hand (objekt og bonus, folket og vink, fiendar og hendingar,
-UI og knappar, og eit banner). Utskjeringa finn kvar teikning ved å utvide
+UI og knappar, 18 Harald-brikker, og eit banner). Utskjeringa finn kvar teikning ved å utvide
 blekket til samanhengande flekkar, skil teikning frå bilettekst på farge og
 form, og skriv ut ein trimma PNG per ting.
 
@@ -73,7 +78,7 @@ ho blir generert:
 src/draw.js     blekk-primitiv: skjelvande strek, lukka former, flekkar
 src/people.js   ein figur = ein spesifikasjon (hud, hår, frakk, hatt, positur)
 src/props.js    smått og staffasje: hundar, ballongar, fontener, bodar
-src/assets.js   lastar dei teikna ressursane og held storleikane deira
+src/assets.js   lastar dei teikna ressursane, Harald-brikkene og storleikane deira
 src/board.js    brettgeneratoren — rader, tettleik, gøymde mål
 src/game.js     spel-loop, pan/zoom, treff, farar, målarar og liv
 src/rng.js      frø-styrt tilfeldiggjerar, så eit brett kan spelast om att

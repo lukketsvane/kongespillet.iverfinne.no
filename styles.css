@@ -75,6 +75,7 @@ html, body {
 .fill.verd { background: var(--gold); }
 .fill.low { background: var(--red); }
 
+.mood { height: 40px; width: auto; object-fit: contain; }
 .lives { display: flex; gap: 2px; }
 .lives img { width: 22px; height: 22px; object-fit: contain; }
 
@@ -242,7 +243,9 @@ html, body {
 .card .rules { text-align: left; font-size: 14px; line-height: 1.5; padding-left: 18px; margin: 8px 0; }
 .card kbd { border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; font-size: 12px; }
 .card .hero { width: 100%; max-width: 620px; height: auto; margin-bottom: 4px; }
-.card .hurra { width: 130px; height: auto; }
+.card .hurra { width: 120px; height: auto; }
+.card .king { height: 150px; width: auto; margin: 0 0 -6px 6px; }
+.card .king.big { height: 190px; }
 .card .cheer { width: 82%; height: auto; margin-top: 8px; }
 .card .spin { width: 60px; height: auto; animation: spin 1.1s steps(8) infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -307,6 +310,7 @@ html, body {
   #checklist { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); font-size: 13px; }
   .chip img { width: 24px; height: 24px; }
   .lives img { width: 18px; height: 18px; }
+  .mood { height: 30px; }
   .card { padding: 12px 14px 16px; }
   .card .rules { font-size: 13px; }
 }

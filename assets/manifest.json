@@ -945,6 +945,204 @@
    1453
   ]
  },
+ "harald-baby": {
+  "sheet": "harald",
+  "w": 113,
+  "h": 142,
+  "box": [
+   56,
+   333,
+   169,
+   475
+  ]
+ },
+ "harald-barn": {
+  "sheet": "harald",
+  "w": 127,
+  "h": 178,
+  "box": [
+   199,
+   293,
+   326,
+   471
+  ]
+ },
+ "harald-prins": {
+  "sheet": "harald",
+  "w": 103,
+  "h": 273,
+  "box": [
+   371,
+   198,
+   474,
+   471
+  ]
+ },
+ "harald-galla": {
+  "sheet": "harald",
+  "w": 103,
+  "h": 304,
+  "box": [
+   538,
+   171,
+   641,
+   475
+  ]
+ },
+ "harald-vinkar": {
+  "sheet": "harald",
+  "w": 131,
+  "h": 304,
+  "box": [
+   679,
+   168,
+   810,
+   472
+  ]
+ },
+ "harald-talarstol": {
+  "sheet": "harald",
+  "w": 135,
+  "h": 311,
+  "box": [
+   854,
+   169,
+   989,
+   480
+  ]
+ },
+ "harald-gaar-venstre": {
+  "sheet": "harald",
+  "w": 135,
+  "h": 287,
+  "box": [
+   36,
+   621,
+   171,
+   908
+  ]
+ },
+ "harald-gaar-hogre": {
+  "sheet": "harald",
+  "w": 125,
+  "h": 286,
+  "box": [
+   225,
+   622,
+   350,
+   908
+  ]
+ },
+ "harald-bekymra": {
+  "sheet": "harald",
+  "w": 99,
+  "h": 304,
+  "box": [
+   392,
+   610,
+   491,
+   914
+  ]
+ },
+ "harald-glad": {
+  "sheet": "harald",
+  "w": 92,
+  "h": 300,
+  "box": [
+   561,
+   612,
+   653,
+   912
+  ]
+ },
+ "harald-stovlar": {
+  "sheet": "harald",
+  "w": 110,
+  "h": 299,
+  "box": [
+   714,
+   615,
+   824,
+   914
+  ]
+ },
+ "harald-stokk": {
+  "sheet": "harald",
+  "w": 122,
+  "h": 302,
+  "box": [
+   860,
+   611,
+   982,
+   913
+  ]
+ },
+ "harald-gamal": {
+  "sheet": "harald",
+  "w": 115,
+  "h": 366,
+  "box": [
+   44,
+   1073,
+   159,
+   1439
+  ]
+ },
+ "harald-balkong": {
+  "sheet": "harald",
+  "w": 131,
+  "h": 280,
+  "box": [
+   206,
+   1061,
+   337,
+   1341
+  ]
+ },
+ "harald-sira": {
+  "sheet": "harald",
+  "w": 216,
+  "h": 269,
+  "box": [
+   352,
+   1066,
+   568,
+   1335
+  ]
+ },
+ "harald-avis": {
+  "sheet": "harald",
+  "w": 138,
+  "h": 285,
+  "box": [
+   545,
+   1059,
+   683,
+   1344
+  ]
+ },
+ "harald-siger": {
+  "sheet": "harald",
+  "w": 132,
+  "h": 283,
+  "box": [
+   719,
+   1061,
+   851,
+   1344
+  ]
+ },
+ "harald-gameover": {
+  "sheet": "harald",
+  "w": 95,
+  "h": 278,
+  "box": [
+   898,
+   1068,
+   993,
+   1346
+  ]
+ },
  "hero-banner": {
   "sheet": "hero",
   "w": 1672,

@@ -57,6 +57,14 @@ SHEETS = {
             'liv-full', 'liv-full2', 'liv-par', 'liv-tom', 'liv-tom2',
         ],
     },
+    'harald': {
+        'file': '28525ffe-image.png',
+        'names': [
+            'harald-baby', 'harald-barn', 'harald-prins', 'harald-galla', 'harald-vinkar', 'harald-talarstol',
+            'harald-gaar-venstre', 'harald-gaar-hogre', 'harald-bekymra', 'harald-glad', 'harald-stovlar', 'harald-stokk',
+            'harald-gamal', 'harald-balkong', 'harald-sira', 'harald-avis', 'harald-siger', 'harald-gameover',
+        ],
+    },
     'hero': {
         'file': '0bf9ad44-image.png',
         'names': None,  # heile banneret, pluss dei største bitane
@@ -250,7 +258,45 @@ def main(upload_dir):
             cut(im, mask, box, OUT / f'{name}.png')
             manifest[name] = {'sheet': sheet, 'w': box[2] - box[0], 'h': box[3] - box[1], 'box': box}
         print(f'{sheet}: {min(len(boxes), len(names))} ressursar')
+    shrink()
+    make_blank_plank()
     (OUT / 'manifest.json').write_text(json.dumps(manifest, indent=1, ensure_ascii=False))
+
+
+# Sprites blir aldri viste større enn nokre hundre piksler, så vi krympar og
+# kvantiserer. Det tek pakka frå ~7,6 MB til ~1,1 MB utan synleg tap.
+MAXDIM = {'hero-banner': 1200}
+DEFAULT_MAX = 420
+
+
+def shrink():
+    before = after = 0
+    for f in sorted(OUT.glob('*.png')):
+        before += f.stat().st_size
+        im = Image.open(f).convert('RGBA')
+        lim = MAXDIM.get(f.stem, DEFAULT_MAX)
+        m = max(im.size)
+        if m > lim:
+            k = lim / m
+            im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+        im.quantize(colors=192, method=Image.FASTOCTREE, dither=Image.Dither.NONE).save(f, optimize=True)
+        after += f.stat().st_size
+    print(f'krympa {before / 1e6:.1f} MB -> {after / 1e6:.1f} MB')
+
+
+def make_blank_plank():
+    """Poeng-planken har talet 1250 innbrent; vi fyller midten med treverk."""
+    src = OUT / 'poeng.png'
+    if not src.exists():
+        return
+    a = np.array(Image.open(src).convert('RGBA'))
+    h, w = a.shape[:2]
+    band = a[int(h * 0.10):int(h * 0.26)]
+    y0, y1, x0, x1 = int(h * 0.20), int(h * 0.82), int(w * 0.08), int(w * 0.92)
+    reps = int(np.ceil((y1 - y0) / max(1, band.shape[0])))
+    fill = np.concatenate([band, band[::-1]] * reps, axis=0)[:y1 - y0]
+    a[y0:y1, x0:x1] = fill[:, x0:x1]
+    Image.fromarray(a).save(OUT / 'poeng-tom.png')
 
 
 if __name__ == '__main__':

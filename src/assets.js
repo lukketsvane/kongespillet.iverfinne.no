@@ -28,6 +28,28 @@ export const OBJECTS = {
   stjerne: { h: 22, label: 'stjerne', plural: 'stjerner', bonus: 'verd' },
 };
 
+// Harald-brikkene. Kvar runde er det éin bestemt av dei som er gøymd i
+// mengda — resten står der som lokkekongar.
+export const HARALDS = {
+  'harald-galla': { h: 54, label: 'Harald i gallauniform' },
+  'harald-vinkar': { h: 54, label: 'Harald som vinkar' },
+  'harald-talarstol': { h: 54, label: 'Harald på talarstol' },
+  'harald-gaar-venstre': { h: 52, label: 'Harald på veg til venstre' },
+  'harald-gaar-hogre': { h: 52, label: 'Harald på veg til høgre' },
+  'harald-bekymra': { h: 54, label: 'ein bekymra Harald' },
+  'harald-glad': { h: 54, label: 'ein glad Harald' },
+  'harald-stovlar': { h: 54, label: 'Harald i gummistøvlar' },
+  'harald-stokk': { h: 54, label: 'Harald med stokk' },
+  'harald-gamal': { h: 54, label: 'gamal Harald med stokk' },
+  'harald-avis': { h: 54, label: 'Harald som les avis' },
+  'harald-siger': { h: 54, label: 'Harald i sigerposisjon' },
+  'harald-balkong': { h: 56, label: 'Harald på balkongen' },
+  'harald-sira': { h: 46, label: 'Harald i Sira' },
+  'harald-prins': { h: 46, label: 'den unge prinsen' },
+  'harald-barn': { h: 38, label: 'barne-Harald' },
+  'harald-baby': { h: 30, label: 'baby-Harald' },
+};
+
 // Folk frå arket som blir strødde inn i mengda som store, teikna figurar.
 export const FOLK = [
   'barn', 'eldre-dame', 'mann-med-flagg', 'turist', 'ungdom', 'bunadperson',
@@ -46,7 +68,7 @@ const UI_ART = [
   'jublande', 'skeptikar', 'folk-lag', 'folk-hog', 'verd-lag', 'verd-hog',
 ];
 
-export const ALL = [...new Set([...Object.keys(OBJECTS), ...FOLK, ...HAZARD_ART, ...UI_ART])];
+export const ALL = [...new Set([...Object.keys(OBJECTS), ...Object.keys(HARALDS), ...FOLK, ...HAZARD_ART, ...UI_ART, 'harald-gameover'])];
 
 function load(name) {
   return new Promise((resolve) => {

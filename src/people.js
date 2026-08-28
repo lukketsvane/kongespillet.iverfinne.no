@@ -13,7 +13,6 @@ export function makePerson(rng, opts = {}) {
   const p = {
     kind,
     h,
-    variant: opts.variant || null,
     skin: rng.pick(SKIN),
     hair: kind === 'elder' ? rng.pick(['#8f9195', '#e8e6e0', '#c9c6bd']) : rng.pick(HAIR),
     hairStyle: rng.pick(HAIRSTYLES),
@@ -38,17 +37,6 @@ export function makePerson(rng, opts = {}) {
     p.glasses = rng.chance(0.06);
   }
 
-  switch (opts.variant) {
-    case 'harald':
-      Object.assign(p, {
-        kind: 'adult', h: 45, hair: '#eceae4', hairStyle: 'short', coat: '#26262a', coatStyle: 'suit',
-        pants: '#26262a', shoes: '#1f1f21', hat: 'crown', glasses: true, sash: '#d4453a',
-        pose: 'wave', beard: false, scarf: null, stout: 1.04, skin: '#f0cca6', flip: false, prop: null,
-      });
-      break;
-    default:
-      break;
-  }
   return p;
 }
 
@@ -406,10 +394,6 @@ export function drawPerson(ctx, rng, p, x, y, s = 1) {
       [bw * 0.3, shoulderY + h * 0.06],
       [-bw * 0.3, shoulderY + h * 0.06],
     ], { fill: p.scarf, lw: 0.7, jitter: 0.25 });
-  }
-  if (p.variant === 'harald') {
-    dot(ctx, -bw * 0.26, shoulderY + h * 0.1, h * 0.028, '#f5cf2e');
-    dot(ctx, -bw * 0.34, shoulderY + h * 0.16, h * 0.024, '#e8e6e0');
   }
 
   // framarm

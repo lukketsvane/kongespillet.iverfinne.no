@@ -4,9 +4,8 @@
 
 import { makeRng, randomSeed } from './rng.js';
 import { generateBoard, renderBoard, WORLD_W, WORLD_H, ITEMS } from './board.js';
-import { itemIcon } from './icons.js';
 import { sfx, setMuted, isMuted } from './audio.js';
-import { loadAssets, drawArt, artUrl, artWidth, IMG } from './assets.js';
+import { loadAssets, drawArt, artUrl, artWidth, IMG, HARALDS } from './assets.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -132,7 +131,7 @@ function startGame(seed) {
 // --------------------------------------------------------------- sjekkliste
 
 function iconFor(key) {
-  return key === 'harald' ? itemIcon('harald') : artUrl(key);
+  return artUrl(key === 'harald' ? state.board.haraldKey : key);
 }
 
 function buildChecklist() {
@@ -145,7 +144,7 @@ function buildChecklist() {
   }
   const meta = new Map(ITEMS.map((i) => [i.key, i]));
 
-  const h = chip('harald', 'Harald sjølv');
+  const h = chip('harald', HARALDS[state.board.haraldKey].label);
   h.classList.add('is-harald');
   wrap.appendChild(h);
   for (const [key] of counts) wrap.appendChild(chip(key, meta.get(key).label));
@@ -187,6 +186,12 @@ function updateHud() {
   $('#verdbar').style.width = Math.max(0, Math.min(100, state.verd)) + '%';
   $('#folkbar').classList.toggle('low', state.folk < 30);
   $('#verdbar').classList.toggle('low', state.verd < 30);
+  const mood = $('#mood');
+  if (mood) {
+    const m = Math.min(state.folk, state.verd);
+    const want = artUrl(m < 32 ? 'harald-bekymra' : m > 68 ? 'harald-glad' : 'harald-galla');
+    if (mood.getAttribute('src') !== want) mood.src = want;
+  }
   $('#hintBtn').textContent = `Hint (${state.hints})`;
   $('#hintBtn').disabled = state.hints <= 0 || state.phase !== 'play';
 
@@ -281,12 +286,12 @@ function resolvePress() {
     state.folk = Math.min(100, state.folk + 16);
     state.verd = Math.min(100, state.verd + 6);
     state.score += 220;
-    eventPanel('ok', '«Kongen i storform»', 'avisframside');
+    eventPanel('ok', '«Kongen i storform»', 'harald-vinkar');
   } else {
     state.folk -= 14;
     state.verd -= 10;
     state.combo = 0;
-    eventPanel('feil', '«Sur konge på torget»', 'sladrespalte');
+    eventPanel('feil', '«Sur konge på torget»', 'harald-bekymra');
   }
   updateHud();
 }
@@ -366,6 +371,7 @@ function hitTest(wx, wy) {
     if (wy > k.y - k.h && wy < k.y + 8 && wx > k.x && wx < k.x + k.w) return { type: 'blocked' };
   }
   let best = null;
+  let wrong = null;
   let bestD = Infinity;
   for (const t of state.board.targets) {
     if (t.found) continue;
@@ -375,7 +381,12 @@ function hitTest(wx, wy) {
       bestD = d;
     }
   }
-  return best ? { type: 'target', target: best } : { type: 'miss' };
+  if (best) return { type: 'target', target: best };
+  for (const d of state.board.decoyHaralds) {
+    const dist = Math.hypot(wx - d.x, wy - d.y);
+    if (dist < d.r && (!wrong || dist < wrong.d)) wrong = { d: dist, king: d };
+  }
+  return wrong ? { type: 'wrongking', king: wrong.king } : { type: 'miss' };
 }
 
 function tap(sx, sy) {
@@ -401,6 +412,15 @@ function tap(sx, sy) {
   if (hit.type === 'blocked') {
     toast('«Ingenting å sjå her.»', 'bad');
     return sfx.miss();
+  }
+  if (hit.type === 'wrongking') {
+    state.combo = 0;
+    state.folk -= 3;
+    state.verd -= 5;
+    sfx.miss();
+    state.ring = { x, y, t: 0, bad: true };
+    toast(`Det er ${HARALDS[hit.king.key].label}. Ikkje han du leitar etter.`, 'bad', 'tommel-ned');
+    return updateHud();
   }
   if (hit.type === 'target') {
     const t = hit.target;
@@ -475,6 +495,7 @@ function levelClear() {
   showOverlay(`
     <div class="card">
       <img class="hurra" src="${artUrl('hurra')}" alt="">
+      <img class="king" src="${artUrl('harald-siger')}" alt="">
       <h2>Nivå ${state.level} klart</h2>
       <p class="lead">Alt funne på ${state.levelTime.toFixed(1)} s.</p>
       <ul class="tally">
@@ -504,7 +525,7 @@ function gameOver(why) {
   saveBest();
   showOverlay(`
     <div class="card">
-      <img class="hero" src="${artUrl('sladrespalte')}" alt="">
+      <img class="king big" src="${artUrl('harald-gameover')}" alt="">
       <h2>Gått under</h2>
       <p class="lead">${why}</p>
       <ul class="tally">

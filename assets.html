@@ -26,7 +26,6 @@
 <div class="sheet">
   <h1>Grafiske ressursar</h1>
   <p class="sub">Handteikna ark skorne opp til sprites, og ei folkemengd generert i kode.</p>
-  <p class="note">Kvar figur er ein liten spesifikasjon — hud, hår, frakk, hatt, positur — teikna med ein skjelvande blekkpenn, slik at ingen to i mengda er heilt like.</p>
 
   <h2>Teikna ressursar frå arka</h2>
   <p class="note">Dei fem ressurs-arka er skorne opp automatisk til <b id="artCount">0</b> einskilde
@@ -35,7 +34,10 @@
   <div class="grid" id="art"></div>
 
   <h2>Folkemengda — teikna i kode</h2>
-  <h3 class="sub2">Hovudrollene</h3>
+  <p class="note">Ho kan ikkje teiknast for hand: det er opptil 1700 personar per brett.
+  Kvar figur er ein liten spesifikasjon — hud, hår, frakk, hatt, positur — teikna med
+  ein skjelvande blekkpenn, slik at ingen to i mengda er heilt like.</p>
+  <h3 class="sub2">Lokkekonge (mørk dress, ingen krone)</h3>
   <div class="grid" id="variants"></div>
 
   <h2>Smått og staffasje i mengda</h2>
@@ -93,13 +95,15 @@ function cell(parent, label, w, h, draw) {
   parent.appendChild(fig);
 }
 
-const person = (variant, label, seed = 3, scale = 2.2) =>
-  cell(document.querySelector('#variants'), label, 110, 130, (g) => {
-    const rng = makeRng(seed);
-    drawPerson(g, makeRng(seed + 1), makePerson(rng, { variant }), 55, 122, scale);
+for (let i = 0; i < 4; i++) {
+  cell(document.querySelector('#variants'), 'lokkekonge', 110, 130, (g) => {
+    const rng = makeRng(31 + i * 17);
+    const p = makePerson(rng);
+    Object.assign(p, { coat: '#26262a', coatStyle: 'suit', pants: '#26262a', hat: null,
+      sash: i % 2 ? '#d4453a' : null, hair: '#e8e6e0', pose: i % 3 ? 'stand' : 'wave', flip: false, tilt: 0 });
+    drawPerson(g, makeRng(32 + i), p, 55, 122, 2.2);
   });
-
-person('harald', 'Harald i mengda');
+}
 
 const decoys = ['hund', 'rev', 'ballong', 'veske', 'maake', 'tuba', 'gitar', 'blomsterkasse', 'fontene', 'bod'];
 for (const k of decoys) {

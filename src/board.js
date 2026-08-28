@@ -4,7 +4,7 @@
 import { makeRng } from './rng.js';
 import { makePerson, drawPerson } from './people.js';
 import { drawProp } from './props.js';
-import { OBJECTS, FOLK, drawArt, artWidth } from './assets.js';
+import { OBJECTS, HARALDS, FOLK, drawArt, artWidth } from './assets.js';
 
 export const WORLD_W = 1900;
 export const WORLD_H = 1240;
@@ -88,15 +88,29 @@ export function generateBoard(seed, level) {
   const addTarget = (item, x, y, r, kind) =>
     targets.push({ id: `${item}#${targets.length}`, item, x, y, r, kind, found: false });
 
-  // Harald sjølv står i mengda, aldri heilt ute i kanten.
-  const hi = takeSlot((s) => s.x > 180 && s.x < WORLD_W - 180 && s.y > 160 && s.y < WORLD_H - 120);
-  slots[hi].person = makePerson(rng, { variant: 'harald' });
-  slots[hi].s = 1.0;
-  slots[hi].harald = true;
-  const harald = { x: slots[hi].x, y: slots[hi].y };
-  addTarget('harald', harald.x, harald.y - 26, 26, 'person');
+  // Denne runden er det éin bestemt Harald som er gøymd.
+  const haraldPool = rng.shuffle(Object.keys(HARALDS));
+  const haraldKey = haraldPool[0];
+  const placeHarald = (key, isTarget) => {
+    const host = slots[takeSlot((s) => s.x > 150 && s.x < WORLD_W - 150 && s.y > 150 && s.y < WORLD_H - 110)];
+    const h = HARALDS[key].h;
+    const x = host.x + rng.range(-8, 8);
+    const y = host.y + rng.range(0, 6);
+    slots.push({ type: 'harald', key, x, y, h, row: host.row });
+    return { x, y, h, r: Math.max(20, artWidth(key, h) * 0.55) };
+  };
 
-  // Lokkekongar: mørk dress og orden, men ingen krone.
+  const hp = placeHarald(haraldKey, true);
+  const harald = { x: hp.x, y: hp.y, key: haraldKey };
+  addTarget('harald', hp.x, hp.y - hp.h / 2, hp.r, 'harald');
+
+  // Lokkekongar: alle dei andre brikkene, og nokre mørke dressar utan krone.
+  const decoyHaralds = [];
+  for (let i = 0; i < Math.min(haraldPool.length - 1, 3 + level); i++) {
+    const key = haraldPool[1 + i];
+    const d = placeHarald(key, false);
+    decoyHaralds.push({ key, x: d.x, y: d.y - d.h / 2, r: d.r });
+  }
   for (let i = 0; i < 3 + level; i++) {
     const d = slots[takeSlot()].person;
     d.coat = '#26262a';
@@ -172,7 +186,7 @@ export function generateBoard(seed, level) {
 
   slots.sort((a, b) => a.y - b.y);
 
-  return { seed, level, plan, slots, targets, harald, items: chosen, w: WORLD_W, h: WORLD_H };
+  return { seed, level, plan, slots, targets, harald, haraldKey, decoyHaralds, items: chosen, w: WORLD_W, h: WORLD_H };
 }
 
 // Teiknar heile brettet ein gong til eit lerret utanfor skjermen.
@@ -190,7 +204,7 @@ export function renderBoard(board, dpr = 1) {
   const rng = makeRng(board.seed ^ 0x9e3779b9);
   for (const s of board.slots) {
     if (s.type === 'person') drawPerson(ctx, rng, s.person, s.x, s.y, s.s);
-    else if (s.type === 'art') drawArt(ctx, s.key, s.x, s.y, s.h);
+    else if (s.type === 'art' || s.type === 'harald') drawArt(ctx, s.key, s.x, s.y, s.h);
     else if (s.type === 'folk') drawArt(ctx, s.key, s.x, s.y, s.h, { flip: s.flip });
     else drawProp(ctx, rng, s.key, s.x, s.y, s.s);
   }
