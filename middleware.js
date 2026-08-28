@@ -1,13 +1,47 @@
 import { NextResponse } from 'next/server';
 
 const ORIGIN = 'https://finn-harald.iver-raknes-finne.chatgpt.site/';
+const RENDER_MARKER = 'i-n>50&&(n=i,_())';
+const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 
 export const config = {
-  matcher: ['/'],
+  matcher: ['/', '/assets/page-:path*'],
 };
+
+async function patchGameBundle(request) {
+  try {
+    const upstream = await fetch(new URL(request.nextUrl.pathname, ORIGIN), {
+      headers: {
+        accept: 'text/javascript,application/javascript,*/*;q=0.1',
+        'user-agent': request.headers.get('user-agent') || 'Mozilla/5.0',
+      },
+      cache: 'force-cache',
+    });
+
+    if (!upstream.ok) return NextResponse.next();
+
+    const source = await upstream.text();
+    const patched = source.includes(RENDER_MARKER)
+      ? source.replace(RENDER_MARKER, RENDER_PATCH)
+      : source;
+
+    const headers = new Headers();
+    headers.set('content-type', 'text/javascript; charset=utf-8');
+    headers.set('cache-control', 'public, max-age=31536000, immutable');
+    headers.set('x-fh-render-patch', patched === source ? '0' : '1');
+    return new Response(patched, { status: 200, headers });
+  } catch {
+    return NextResponse.next();
+  }
+}
 
 export async function middleware(request) {
   if (request.method !== 'GET') return NextResponse.next();
+
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith('/assets/page-') && pathname.endsWith('.js')) {
+    return patchGameBundle(request);
+  }
 
   const accept = request.headers.get('accept') || '';
   if (!accept.includes('text/html')) return NextResponse.next();
