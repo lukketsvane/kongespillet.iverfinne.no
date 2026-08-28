@@ -1,0 +1,14 @@
+{
+  "name": "finn-harald",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Finn Harald! — eit leite-spel der folkemengda blir teikna i kode og trekt på nytt kvar runde.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "playtest": "node tools/playtest.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}

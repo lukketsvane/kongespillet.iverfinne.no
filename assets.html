@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="nn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grafiske ressursar — Finn Harald!</title>
+<link rel="stylesheet" href="./styles.css">
+<style>
+  body { background: #efece4; }
+  .sheet { max-width: 1300px; margin: 0 auto; background: var(--paper); padding: 22px 26px 40px; }
+  h1, h2 { font-family: var(--serif); font-weight: 500; }
+  h1 { font-size: 40px; margin: 0 0 2px; text-align: center; }
+  .sub { font-family: var(--serif); font-style: italic; text-align: center; margin: 0 0 18px; }
+  h2 { font-size: 20px; border-bottom: 1px solid var(--rule); padding-bottom: 4px; margin: 26px 0 10px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  figure { margin: 0; text-align: center; background: #fff; border: 1px solid rgba(29,27,24,.25); padding: 6px; }
+  figcaption { font-family: var(--serif); font-size: 11px; color: var(--muted); margin-top: 4px; }
+  canvas { display: block; }
+  .note { font-family: var(--serif); font-size: 14px; max-width: 62ch; margin: 0 auto 6px; text-align: center; }
+  .back { display: block; text-align: center; font-family: var(--serif); margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>Grafiske ressursar</h1>
+  <p class="sub">Alt i spelet er teikna i kode. Ingen bilete blir lasta ned.</p>
+  <p class="note">Kvar figur er ein liten spesifikasjon — hud, hår, frakk, hatt, positur — teikna med ein skjelvande blekkpenn, slik at ingen to i mengda er heilt like.</p>
+
+  <h2>Hovudrollene</h2>
+  <div class="grid" id="variants"></div>
+
+  <h2>Ting på lista</h2>
+  <div class="grid" id="targets"></div>
+
+  <h2>Lokkedyr og staffasje</h2>
+  <div class="grid" id="decoys"></div>
+
+  <h2>Positurar</h2>
+  <div class="grid" id="poses"></div>
+
+  <h2>Hattar og hår</h2>
+  <div class="grid" id="heads"></div>
+
+  <h2>Tilfeldige folk</h2>
+  <div class="grid" id="crowd"></div>
+
+  <a class="back" href="./index.html">← tilbake til spelet</a>
+</div>
+
+<script type="module">
+import { makeRng } from './src/rng.js';
+import { makePerson, drawPerson } from './src/people.js';
+import { drawProp } from './src/props.js';
+
+const dpr = Math.min(2, window.devicePixelRatio || 1);
+
+function cell(parent, label, w, h, draw) {
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.width = w * dpr; cv.height = h * dpr;
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  draw(g);
+  fig.appendChild(cv);
+  const cap = document.createElement('figcaption');
+  cap.textContent = label;
+  fig.appendChild(cap);
+  parent.appendChild(fig);
+}
+
+const person = (variant, label, seed = 3, scale = 2.2) =>
+  cell(document.querySelector('#variants'), label, 110, 130, (g) => {
+    const rng = makeRng(seed);
+    drawPerson(g, makeRng(seed + 1), makePerson(rng, { variant }), 55, 122, scale);
+  });
+
+person('harald', 'Harald');
+person('sonja', 'Sonja');
+person('macarena', 'macarena');
+person('durek', 'sjaman Durek');
+person('ksv', 'KSV');
+person('presse', 'pressa');
+
+const targets = ['krone', 'baat', 'flagg', 'rev', 'stokk', 'stovel', 'stovlar', 'mikrofon', 'note', 'sira'];
+for (const k of targets) {
+  cell(document.querySelector('#targets'), k, 110, 110, (g) => {
+    drawProp(g, makeRng(11), k, 55, k === 'sira' ? 78 : 92, k === 'sira' ? 1.6 : 2.2);
+  });
+}
+
+const decoys = ['blaabaat', 'danskflagg', 'sko', 'gklave', 'hund', 'ballong', 'is', 'veske', 'paraply', 'maake', 'tuba', 'gitar', 'blomsterkasse', 'fontene', 'bod'];
+for (const k of decoys) {
+  const big = ['blomsterkasse', 'fontene', 'bod'].includes(k);
+  cell(document.querySelector('#decoys'), k, big ? 190 : 110, big ? 150 : 110, (g) => {
+    drawProp(g, makeRng(23), k, big ? 95 : 55, big ? 128 : 92, big ? 1.7 : 2.0);
+  });
+}
+
+const poses = ['stand', 'walk', 'wave', 'point', 'pocket', 'both', 'macarena', 'camera', 'crystal', 'guard', 'bouquet'];
+for (const pose of poses) {
+  cell(document.querySelector('#poses'), pose, 100, 120, (g) => {
+    const rng = makeRng(77);
+    const p = makePerson(rng);
+    p.pose = pose; p.flip = false; p.tilt = 0; p.hat = null;
+    drawPerson(g, makeRng(78), p, 50, 112, 2.3);
+  });
+}
+
+const hats = ['cap', 'brim', 'top', 'beanie', 'bucket', 'party', 'helmet', 'crown'];
+const hairs = ['short', 'bob', 'long', 'bun', 'ponytail', 'spiky', 'bald', 'curly'];
+for (const hat of hats) {
+  cell(document.querySelector('#heads'), hat, 84, 110, (g) => {
+    const rng = makeRng(101);
+    const p = makePerson(rng);
+    p.hat = hat; p.pose = 'stand'; p.flip = false; p.tilt = 0;
+    drawPerson(g, makeRng(102), p, 42, 104, 2.2);
+  });
+}
+for (const hairStyle of hairs) {
+  cell(document.querySelector('#heads'), hairStyle, 84, 110, (g) => {
+    const rng = makeRng(205);
+    const p = makePerson(rng);
+    p.hat = null; p.hairStyle = hairStyle; p.pose = 'stand'; p.flip = false; p.tilt = 0;
+    drawPerson(g, makeRng(206), p, 42, 104, 2.2);
+  });
+}
+
+for (let i = 0; i < 48; i++) {
+  cell(document.querySelector('#crowd'), '', 74, 100, (g) => {
+    const rng = makeRng(1000 + i * 137);
+    drawPerson(g, makeRng(2000 + i), makePerson(rng), 37, 94, 1.9);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="nn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Finn Harald! — kongespelet</title>
+<meta name="description" content="Eit leite-spel: du er Kong Harald, bortkomen i di eiga folkemengd. Nytt brett kvar gong.">
+<meta name="theme-color" content="#f4f1ea">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>👑</text></svg>">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="head">
+    <div class="crown">
+      <svg viewBox="0 0 40 26" aria-hidden="true"><path d="M4 22h32M6 21l-2-14 8 7 6-11 6 11 8-7-2 14z" fill="none" stroke="#1d1b18" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>Finn Harald!</h1>
+    <p class="sub">Ei folkemengd, ein konge, fleire ting å leite etter.</p>
+  </header>
+
+  <div class="hudbar">
+    <div class="pop" title="Folkegunst">
+      <span class="popLbl">Folkegunst</span>
+      <div class="poptrack"><div id="popbar"></div></div>
+    </div>
+    <div class="stats">
+      <span>Nivå <b id="lvl">1</b></span>
+      <span>Poeng <b id="score">0</b></span>
+      <span class="hide-sm">Beste <b id="best">0</b></span>
+      <span id="seedTag" class="seed"></span>
+    </div>
+    <div class="tools">
+      <button id="hintBtn" class="btn">Hint (3)</button>
+      <button id="zoomOut" class="btn sq" title="Zoom ut">−</button>
+      <button id="zoomIn" class="btn sq" title="Zoom inn">+</button>
+      <button id="muteBtn" class="btn sq" title="Lyd">🔊</button>
+      <button id="newBtn" class="btn sq" title="Nytt spel">⟳</button>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="board"></canvas>
+    <div id="toast"></div>
+    <div id="overlay"></div>
+    <button id="waveBtn" class="wave">👋 VINK<span>mellomrom</span></button>
+  </div>
+
+  <div id="checklist"></div>
+
+  <footer class="foot">Når du har funne han, vinkar du.</footer>
+</div>
+
+<script type="module" src="./src/game.js"></script>
+</body>
+</html>
