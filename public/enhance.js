@@ -24,7 +24,7 @@ function valueNearLabel(label,re){
   return null;
 }
 function yearEl(){return valueNearLabel(leaf('ÅR'),/^(19|20)\d{2}$/)}
-function scoreValue(){return num(valueNearLabel(leaf('SCORE'),/^[\d .]+$/)?.textContent)}
+function scoreValue(){return num(valueNearLabel(leaf('SCORE'),/^\d[\d .]*$/)?.textContent)}
 function syncBaseAge(){
   const el=ageEl();if(!el)return;
   const shown=num(el.textContent);
@@ -61,9 +61,37 @@ function flashPenalty(years=1){
   let tag=document.querySelector('.fh-age-penalty');if(!tag){tag=document.createElement('div');tag.className='fh-age-penalty';document.body.appendChild(tag)}
   tag.textContent=`+${years} ÅR`;tag.classList.remove('show');requestAnimationFrame(()=>tag.classList.add('show'));setTimeout(()=>tag.classList.remove('show'),650);
 }
+// Ein bom kostar eit år — men berre eit ekte trykk tel. Panorering og knip er
+// sjølve leitinga, så eit drag eller ein finger nummer to avlyser straffa,
+// akkurat som world.js svelgjer klikket etter eit drag.
+const TAP_SLOP=8;
+const gesture={active:false,ids:new Set(),x:0,y:0,moved:false,multi:false,beforeAge:0,beforeScore:0};
+function judgeTap(beforeAge,beforeScore){setTimeout(()=>{syncBaseAge();if(gameActive()&&clock.baseAge<=beforeAge&&scoreValue()<=beforeScore)flashPenalty(1)},520)}
 function wireMistakes(){
   const b=document.querySelector('.crowd-board');if(!b||b.dataset.fhHardWired)return;b.dataset.fhHardWired='1';
-  b.addEventListener('pointerdown',()=>{clock.armed=true;syncBaseAge();const beforeAge=clock.baseAge,beforeScore=scoreValue();setTimeout(()=>{syncBaseAge();const afterScore=scoreValue();if(gameActive()&&clock.baseAge<=beforeAge&&afterScore<=beforeScore)flashPenalty(1)},520)},{passive:true});
+  gesture.active=false;gesture.ids.clear();
+  b.addEventListener('pointerdown',e=>{
+    clock.armed=true;
+    if(gesture.active){gesture.multi=true;gesture.ids.add(e.pointerId);return}
+    syncBaseAge();
+    gesture.active=true;gesture.ids.clear();gesture.ids.add(e.pointerId);
+    gesture.x=e.clientX;gesture.y=e.clientY;gesture.moved=false;gesture.multi=false;
+    gesture.beforeAge=clock.baseAge;gesture.beforeScore=scoreValue();
+  },{passive:true});
+  b.addEventListener('pointermove',e=>{
+    if(!gesture.active||!gesture.ids.has(e.pointerId))return;
+    if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>TAP_SLOP)gesture.moved=true;
+  },{passive:true});
+  const end=(e,cancelled)=>{
+    if(!gesture.active||!gesture.ids.has(e.pointerId))return;
+    gesture.ids.delete(e.pointerId);
+    if(gesture.ids.size)return;
+    const tap=!cancelled&&!gesture.moved&&!gesture.multi;
+    gesture.active=false;
+    if(tap)judgeTap(gesture.beforeAge,gesture.beforeScore);
+  };
+  b.addEventListener('pointerup',e=>end(e,false),{passive:true});
+  b.addEventListener('pointercancel',e=>end(e,true),{passive:true});
 }
 
 function smallestCommon(elements){

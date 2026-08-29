@@ -1,123 +1,93 @@
-# Kong Harald — vink eller gå under
+# Finn Harald!
 
-Eit leite-spel i nettlesaren. Du er Kong Harald, og du har rota deg bort i di
-eiga folkemengd. Finn deg sjølv og alt du har mist — og hald både
-**folkekjærleiken** og **verdigheita** oppe medan pressa knipsar, sjamanen
-tåkelegg torget og kommentarfeltet kokar.
+Eit raskt observasjonsspel om å finne kong Harald i folkemengda.
 
-Folkemengda blir trekt på nytt kvar runde: frå knapt 600 personar på nivå 1 til
-over 1700 på nivå 9, alle generert i kode. Tinga du leitar etter, farane og
-heile grensesnittet er handteikna ressursar, skorne ut av seks ressurs-ark.
+Du startar i 1937, året Harald blir fødd. Finn han, og tida går vidare. Harald
+blir eldre medan menneska, kleda og verda rundt han endrar seg.
 
-Og det er ikkje ein kva-som-helst-Harald du leitar etter. Kvar runde er det
-**éin bestemt brikke** som er gøymd — Harald i gummistøvlar, Harald med stokk,
-baby-Harald — og lista viser kven. Dei andre brikkene står i mengda som
-lokkekongar. Klikkar du feil konge, kostar det.
+Alle spelar det same spelet og konkurrerer om å kome lengst på verdslista.
 
-## Spele
+Etter kvart blir folkemengda større og søkeområdet enormt. Du må leite,
+panorere og zoome gjennom historia for å finne kongen.
 
-Opne `index.html` gjennom ein statisk server (nettlesaren nektar ES-modular
-frå `file://`):
+Trykk feil, og Harald blir eitt år eldre.
 
-```
-npx serve .          # eller: python3 -m http.server 4173
-```
+**Kor gammal klarer du å gjere Harald?**
 
-`assets.html` viser alle dei grafiske ressursane — både dei teikna sprites-ane
-og folkemengda som blir generert i kode.
+Spelet ligg på <https://kongespillet.iverfinne.no>.
 
-## Slik spelar du
+## Korleis det heng saman
 
-| Handling | Korleis |
+Sjølve spelet — folkemengda, treffdeteksjonen og aldersteljinga — blir
+publisert frå ei ChatGPT-side. Dette repoet er ein Next.js-app som ligg framfor
+henne på Vercel, og som gjer tre ting:
+
+| Fil | Rolle |
 | --- | --- |
-| Leite | dra for å flytte deg, rull eller knip for å zoome |
-| Finne | klikk på tingen — eller på rett Harald — når du ser han |
-| Vinke | `mellomrom` eller VINK-knappen |
-| Hint | `h` — kostar verdigheit, tre per spel |
-| Pause | `p` eller `Esc` |
+| `next.config.mjs` | skriv om alt som ikkje ligg her, til kjeldesida |
+| `middleware.js` | hentar HTML-en, lappar spel-bundelen og injiserer skripta under |
+| `pages/api/leaderboard.js` | verdslista, i Postgres — alder først, score ved lik alder |
 
-**Krona** er klokka. Ho sit laust frå første sekund, og di lenger du leitar,
-di lenger vipper ho — du ser henne gli av ikonet i hud-en. Kvart funn set
-henne betre på plass, Harald sjølv mest av alt. Fell ho av, kostar det eit liv.
-
-**Folkekjærleiken** renn ut heile tida, og du fyller han med å vinke. Men folk
-gjennomskodar autopilot: kvar vink tel mindre enn den førre, og vinkar du i
-eitt sett, ryk **verdigheita** i staden. Går ein av dei tre målarane i botn,
-mistar du eit liv. Tre liv, så er det over.
-
-Undervegs:
-
-* **Pressa** ropar før dei knipsar. Vink akkurat då, så blir det «Kongen i
-  storform». Vink ikkje, og biletet blir «Sur konge på torget».
-* **Sjamanen** held seanse midt i mengda og tåkelegg alt rundt seg. Klikk han
-  vekk før verdigheita renn ut.
-* **Vaktene** sperrar av eit belte av torget. Der ser du ingenting før dei har
-  gått forbi.
-* **Kommentarfeltet, skandaleskya og regnstormen** legg seg over skjermen og et
-  verdigheit til du klikkar dei vekk.
-* **Hjarte** gir folkekjærleik, **stjerner** gir verdigheit. Dei ligg gøymde i
-  mengda saman med resten.
-
-Lista veks med nivået, og lokkedyra er dei same tinga som ikkje står på lista
-denne runden — er det talarstolen du leitar etter, ligg statsrådsmappa og
-kaffikoppen der berre for å lure deg.
-
-## Ressursane
+Alt vi eig ligg i `public/` og blir lagt inn på sida av middlewaren, i denne
+rekkjefølgja:
 
 ```
-assets/                 109 sprites frå dei seks arka
-assets/master/          121 sprites frå det store master-arket, sortert i mapper
-tools/extract_assets.py skjer arka opp: finn kvar teikning, kuttar bilettekstane,
-                        gjer papiret gjennomsiktig og gir filene namn
-tools/extract_master.py same for master-arket, som er så tett at radene må
-                        delast på blanke kolonnar
-tools/build_pack.py     sorterer alt i kategoriar og pakkar det til ein zip
+crowd-01..05.js      folkemengda som base64-figurar
+verified-loader.js   lastar historisk verifiserte figurar for året du er i
+crowd-assets.js      fordeler figurar på mengda, vel rett Harald for alderen
+crowd-fix.js         slår av arva filter og animasjonar
+enhance.js           alders-klokka, bom-straffa, verdslista, mobil-layout
+world.js             folketalet, utlegget, panorering og knip
+menu.js              framsida og pausemenyen
+ios.js               safe-area og iOS-særheiter
+usernames.js         namn på spelarar
+music.js             lydsporet
 ```
 
-Master-arket gir NPC-ar (Sonja, Durek, statsministrar, slottsvakt, protestar),
-stader (Slottet, Skaugum, Nidarosdomen, Stortinget, fjorden), båtar (Sira,
-Fram X, Kongeskipet), 13 Harald-sprites, 10 aldrar, 10 andletsuttrykk,
-hendingskort, målarar, vêr, bobler og eit fullt ikonsett.
+`middleware.js` har ein `BUILD`-streng. Han bustar cachen på både bundelen og
+skripta, så **han må hevast for kvar utrulling** — elles ser spelarane dei gamle
+filene.
 
-Den samla pakka (249 filer i 16 kategoriar, med kjeldearka som tapsfri webp og
-dei ferdigrendra nivåbretta med hitboksar) blir bygd slik:
+Middlewaren strengerstattar òg to stader i den minifiserte bundelen frå
+kjeldesida (teiknefrekvens og folketal). Dei to lappane er sjekka mot markørane
+sine før dei blir brukte, så ei ny bundel utan markørane gir uendra kode i
+staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
+`x-fh-crowd-base-cap` i svarhovudet blir `0`. Sjekk dei to etter ei utrulling.
 
-```
-python3 tools/build_pack.py --kjelder <ark> --master <game-assets-master> --nivaa <nivaapakkar>
-```
+## Reglane
 
-Arka er teikna for hand (objekt og bonus, folket og vink, fiendar og hendingar,
-UI og knappar, 18 Harald-brikker, og eit banner). Utskjeringa finn kvar teikning ved å utvide
-blekket til samanhengande flekkar, skil teikning frå bilettekst på farge og
-form, og skriv ut ein trimma PNG per ting.
+* Éin konkurransemodus. Same reglar for alle.
+* Du startar i 1937. Kvart funn flyttar deg framover.
+* Alderen tel først på verdslista, score skil ved lik alder.
+* **Eit bomtrykk kostar eitt år.** Panorering og knip kostar ingenting — det er
+  slik du leitar. `enhance.js` skil dei ved å vente på at fingeren slepper: eit
+  drag over 8 px, eller ein finger nummer to, avlyser straffa.
+* Frå Harald er 8 år veks verda forbi skjermen, og du må dra og knipe for å sjå
+  heile torget.
 
-Folkemengda kan ikkje teiknast for hand — det er 1700 personar per brett — så
-ho blir generert:
-
-```
-src/draw.js     blekk-primitiv: skjelvande strek, lukka former, flekkar
-src/people.js   ein figur = ein spesifikasjon (hud, hår, frakk, hatt, positur)
-src/props.js    smått og staffasje: hundar, ballongar, fontener, bodar
-src/assets.js   lastar dei teikna ressursane, Harald-brikkene og storleikane deira
-src/board.js    brettgeneratoren — rader, tettleik, gøymde mål
-src/game.js     spel-loop, pan/zoom, treff, farar, målarar og liv
-src/rng.js      frø-styrt tilfeldiggjerar, så eit brett kan spelast om att
-```
-
-Brettet blir teikna éin gong til eit lerret utanfor skjermen (rundt 200 ms for
-1700 figurar) og deretter berre flytta og skalert, så det går jamt òg i tett
-mengd.
-
-Kvart brett har eit nummer (`brett #o6h` i hud-en). Legg det på adressa som
-`?seed=o6h` for å spele nøyaktig same folkemengd om att.
-
-## Utviklingsverktøy
+## Utvikling
 
 ```
-python3 tools/extract_assets.py <mappe-med-ark>   # skjer arka på nytt
-node tools/playtest.mjs                           # klikkar kvart mål på fleire nivå
-node tools/shot.mjs . ut.png "js før biletet"     # skjermbilete
+npm install
+npm run test:penalty      # bom-straffa: drag og knip er gratis, bom kostar eit år
+npm run test:first-click  # røyktest av første klikk
+npm run playtest          # klikkar gjennom fleire nivå
 ```
 
-Playwright og Pillow trengst berre til verktøya (`npm i`, `pip install pillow numpy`).
-Sjølve spelet har ingen avhengigheiter.
+`npm run test:penalty` treng ikkje nett: han stubbar den DOM-en `enhance.js` og
+`world.js` les, og køyrer dei mot han. Dei to andre går mot den publiserte sida
+og treng utgåande nett.
+
+`node tools/shot.mjs . ut.png "js før biletet"` tek skjermbilete.
+
+## Ressursar og verktøy
+
+`assets/` og `tools/extract_assets.py`, `extract_master.py`, `build_pack.py`
+høyrer til grafikken: dei skjer teikna ark opp i enkeltsprites, gjer papiret
+gjennomsiktig og pakkar dei i kategoriar. `public/era-sheets/` er
+tidsepoke-arka.
+
+`index.html`, `styles.css`, `assets.html` og `src/` er ein tidlegare, frittståande
+prototype (*«Kong Harald — vink eller gå under»*). Han blir ikkje servert —
+Next.js skriv om alle desse stiane til kjeldesida — men ligg att som referanse
+for teikne- og folkemengd-koden.
