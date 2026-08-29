@@ -4,9 +4,9 @@ const ORIGIN = 'https://finn-harald.iver-raknes-finne.chatgpt.site/';
 const RENDER_MARKER = 'i-n>50&&(n=i,_())';
 const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
-// One fixed competition curve for everyone: density increases with age.
-const CROWD_PATCH = 'Math.round(n*8),24,190);return{targetSize';
-const BUILD = '20260829-competition-ios7';
+// Keep the upstream React crowd modest; world.js guarantees the single fair competition population.
+const CROWD_PATCH = 'Math.round(n*2),8,28);return{targetSize';
+const BUILD = '20260829-quality-world8';
 
 export const config = { matcher: ['/', '/assets/page-:path*'] };
 
@@ -25,7 +25,7 @@ async function patchGameBundle(request) {
     headers.set('content-type', 'text/javascript; charset=utf-8');
     headers.set('cache-control', 'public, max-age=60, stale-while-revalidate=300');
     headers.set('x-fh-render-patch', patched.includes(RENDER_PATCH) ? '1' : '0');
-    headers.set('x-fh-crowd-cap', patched.includes(CROWD_PATCH) ? '190' : '0');
+    headers.set('x-fh-crowd-base-cap', patched.includes(CROWD_PATCH) ? '28' : '0');
     headers.set('x-fh-build', BUILD);
     return new Response(patched, { status: 200, headers });
   } catch { return NextResponse.next(); }
