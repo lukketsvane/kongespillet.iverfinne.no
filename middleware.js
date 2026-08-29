@@ -6,7 +6,7 @@ const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 // Hard mode: a dense crowd from the first years, and a much higher ceiling later.
 const CROWD_PATCH = 'Math.round(n*7),18,190);return{targetSize';
-const BUILD = '20260829-hard3';
+const BUILD = '20260829-hard4';
 
 export const config = {
   matcher: ['/', '/assets/page-:path*'],
@@ -80,6 +80,7 @@ export async function middleware(request) {
       `<script src="/crowd-04.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-05.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-assets.js?v=${BUILD}" defer></script>`,
+      `<script src="/era-crowd.js?v=${BUILD}" defer></script>`,
       `<script src="/enhance.js?v=${BUILD}" defer></script>`,
       `<script src="/usernames.js?v=${BUILD}" defer></script>`,
       `<script src="/music.js?v=${BUILD}" defer></script>`,
