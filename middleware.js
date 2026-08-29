@@ -5,7 +5,7 @@ const RENDER_MARKER = 'i-n>50&&(n=i,_())';
 const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 const CROWD_PATCH = 'Math.round(n*8),24,190);return{targetSize';
-const BUILD = '20260829-ios-quality2';
+const BUILD = '20260829-ios-quality3';
 
 export const config = { matcher: ['/', '/assets/page-:path*'] };
 
