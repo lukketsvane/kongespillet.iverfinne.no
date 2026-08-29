@@ -5,7 +5,7 @@ const RENDER_MARKER = 'i-n>50&&(n=i,_())';
 const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 const CROWD_PATCH = 'Math.round(n*2),8,28);return{targetSize';
-const BUILD = '20260829-crowd-ui4';
+const BUILD = '20260829-roundlock-inlineboard5';
 
 export const config = { matcher: ['/', '/assets/page-:path*'] };
 
@@ -53,6 +53,7 @@ export async function middleware(request) {
     if (!upstream.ok) return NextResponse.next();
     let html = iOSHead(bustGameBundle(await upstream.text()));
     const tags = [
+      `<script src="/round-lock.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-assets.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-fix.js?v=${BUILD}" defer></script>`,
       `<script src="/enhance.js?v=${BUILD}" defer></script>`,
@@ -62,6 +63,7 @@ export async function middleware(request) {
       `<script src="/usernames.js?v=${BUILD}" defer></script>`,
       `<script src="/music.js?v=${BUILD}" defer></script>`,
       `<script src="/experience.js?v=${BUILD}" defer></script>`,
+      `<script src="/inline-leaderboard.js?v=${BUILD}" defer></script>`,
     ];
     const injected=tags.join('');
     html=html.includes('</body>')?html.replace('</body>',`${injected}</body>`):`${html}${injected}`;
