@@ -4,7 +4,9 @@ const ORIGIN = 'https://finn-harald.iver-raknes-finne.chatgpt.site/';
 const RENDER_MARKER = 'i-n>50&&(n=i,_())';
 const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
-const CROWD_PATCH = 'Math.round(n*5),3,96);return{targetSize';
+// Hard mode: a dense crowd from the first years, and a much higher ceiling later.
+const CROWD_PATCH = 'Math.round(n*7),18,190);return{targetSize';
+const BUILD = '20260829-hard3';
 
 export const config = {
   matcher: ['/', '/assets/page-:path*'],
@@ -17,7 +19,7 @@ async function patchGameBundle(request) {
         accept: 'text/javascript,application/javascript,*/*;q=0.1',
         'user-agent': request.headers.get('user-agent') || 'Mozilla/5.0',
       },
-      cache: 'force-cache',
+      cache: 'no-store',
     });
 
     if (!upstream.ok) return NextResponse.next();
@@ -29,13 +31,23 @@ async function patchGameBundle(request) {
 
     const headers = new Headers();
     headers.set('content-type', 'text/javascript; charset=utf-8');
-    headers.set('cache-control', 'public, max-age=31536000, immutable');
+    // Do not pin a patched upstream hash for a year: tuning the game must reach returning phones.
+    headers.set('cache-control', 'public, max-age=60, stale-while-revalidate=300');
     headers.set('x-fh-render-patch', patched.includes(RENDER_PATCH) ? '1' : '0');
-    headers.set('x-fh-crowd-cap', patched.includes(CROWD_PATCH) ? '96' : '0');
+    headers.set('x-fh-crowd-cap', patched.includes(CROWD_PATCH) ? '190' : '0');
+    headers.set('x-fh-build', BUILD);
     return new Response(patched, { status: 200, headers });
   } catch {
     return NextResponse.next();
   }
+}
+
+function bustGameBundle(html) {
+  // The upstream bundle path is content-addressed but our middleware changes its bytes.
+  // Version the request so an iPhone that cached the older immutable 96-person patch fetches again.
+  return html.replace(/src=(['"])(\/assets\/page-[^'"?]+\.js)(?:\?[^'"]*)?\1/g, (_m, q, src) =>
+    `src=${q}${src}?fh=${BUILD}${q}`
+  );
 }
 
 export async function middleware(request) {
@@ -60,29 +72,28 @@ export async function middleware(request) {
 
     if (!upstream.ok) return NextResponse.next();
 
-    let html = await upstream.text();
+    let html = bustGameBundle(await upstream.text());
     const tags = [
-      '<script src="/crowd-01.js" defer></script>',
-      '<script src="/crowd-02.js" defer></script>',
-      '<script src="/crowd-03.js" defer></script>',
-      '<script src="/crowd-04.js" defer></script>',
-      '<script src="/crowd-05.js" defer></script>',
-      '<script src="/crowd-assets.js" defer></script>',
-      '<script src="/enhance.js" defer></script>',
-      '<script src="/usernames.js" defer></script>',
-      '<script src="/music.js" defer></script>',
-    ].filter((tag) => !html.includes(tag.match(/src="([^"]+)/)?.[1] || ''));
+      `<script src="/crowd-01.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-02.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-03.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-04.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-05.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-assets.js?v=${BUILD}" defer></script>`,
+      `<script src="/enhance.js?v=${BUILD}" defer></script>`,
+      `<script src="/usernames.js?v=${BUILD}" defer></script>`,
+      `<script src="/music.js?v=${BUILD}" defer></script>`,
+    ];
 
-    if (tags.length) {
-      const injected = tags.join('');
-      html = html.includes('</body>')
-        ? html.replace('</body>', `${injected}</body>`)
-        : `${html}${injected}`;
-    }
+    const injected = tags.join('');
+    html = html.includes('</body>')
+      ? html.replace('</body>', `${injected}</body>`)
+      : `${html}${injected}`;
 
     const headers = new Headers();
     headers.set('content-type', 'text/html; charset=utf-8');
     headers.set('cache-control', 'no-store, max-age=0');
+    headers.set('x-fh-build', BUILD);
     return new Response(html, { status: 200, headers });
   } catch {
     return NextResponse.next();
