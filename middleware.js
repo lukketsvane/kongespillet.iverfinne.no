@@ -4,8 +4,9 @@ const ORIGIN = 'https://finn-harald.iver-raknes-finne.chatgpt.site/';
 const RENDER_MARKER = 'i-n>50&&(n=i,_())';
 const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
+// Keep the upstream React crowd modest; world.js guarantees the single fair competition population.
 const CROWD_PATCH = 'Math.round(n*2),8,28);return{targetSize';
-const BUILD = '20260829-roundlock-inlineboard5';
+const BUILD = '20260829-quality-world10';
 
 export const config = { matcher: ['/', '/assets/page-:path*'] };
 
@@ -37,7 +38,7 @@ function iOSHead(html) {
   const viewport='<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">';
   if (/<meta[^>]+name=["']viewport["'][^>]*>/i.test(html)) html=html.replace(/<meta[^>]+name=["']viewport["'][^>]*>/i,viewport);
   else html=html.replace(/<head([^>]*)>/i,`<head$1>${viewport}`);
-  const metas='<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Finn Harald"><meta name="theme-color" content="#fffdf9">';
+  const metas='<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Finn Harald"><meta name="theme-color" content="#f7f3e9">';
   if(!html.includes('apple-mobile-web-app-title'))html=html.replace(/<head([^>]*)>/i,`<head$1>${metas}`);
   return html;
 }
@@ -53,7 +54,12 @@ export async function middleware(request) {
     if (!upstream.ok) return NextResponse.next();
     let html = iOSHead(bustGameBundle(await upstream.text()));
     const tags = [
-      `<script src="/round-lock.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-01.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-02.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-03.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-04.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-05.js?v=${BUILD}" defer></script>`,
+      `<script src="/verified-loader.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-assets.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-fix.js?v=${BUILD}" defer></script>`,
       `<script src="/enhance.js?v=${BUILD}" defer></script>`,
@@ -62,8 +68,6 @@ export async function middleware(request) {
       `<script src="/ios.js?v=${BUILD}" defer></script>`,
       `<script src="/usernames.js?v=${BUILD}" defer></script>`,
       `<script src="/music.js?v=${BUILD}" defer></script>`,
-      `<script src="/experience.js?v=${BUILD}" defer></script>`,
-      `<script src="/inline-leaderboard.js?v=${BUILD}" defer></script>`,
     ];
     const injected=tags.join('');
     html=html.includes('</body>')?html.replace('</body>',`${injected}</body>`):`${html}${injected}`;
