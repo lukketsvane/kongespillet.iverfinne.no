@@ -6,7 +6,7 @@ const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 // Hard mode: a dense crowd from the first years, and a much higher ceiling later.
 const CROWD_PATCH = 'Math.round(n*7),18,190);return{targetSize';
-const BUILD = '20260829-hard4';
+const BUILD = '20260829-menu6';
 
 export const config = {
   matcher: ['/', '/assets/page-:path*'],
@@ -31,7 +31,6 @@ async function patchGameBundle(request) {
 
     const headers = new Headers();
     headers.set('content-type', 'text/javascript; charset=utf-8');
-    // Do not pin a patched upstream hash for a year: tuning the game must reach returning phones.
     headers.set('cache-control', 'public, max-age=60, stale-while-revalidate=300');
     headers.set('x-fh-render-patch', patched.includes(RENDER_PATCH) ? '1' : '0');
     headers.set('x-fh-crowd-cap', patched.includes(CROWD_PATCH) ? '190' : '0');
@@ -43,8 +42,6 @@ async function patchGameBundle(request) {
 }
 
 function bustGameBundle(html) {
-  // The upstream bundle path is content-addressed but our middleware changes its bytes.
-  // Version the request so an iPhone that cached the older immutable 96-person patch fetches again.
   return html.replace(/src=(['"])(\/assets\/page-[^'"?]+\.js)(?:\?[^'"]*)?\1/g, (_m, q, src) =>
     `src=${q}${src}?fh=${BUILD}${q}`
   );
@@ -81,7 +78,9 @@ export async function middleware(request) {
       `<script src="/crowd-05.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-assets.js?v=${BUILD}" defer></script>`,
       `<script src="/era-crowd.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-fix.js?v=${BUILD}" defer></script>`,
       `<script src="/enhance.js?v=${BUILD}" defer></script>`,
+      `<script src="/menu.js?v=${BUILD}" defer></script>`,
       `<script src="/usernames.js?v=${BUILD}" defer></script>`,
       `<script src="/music.js?v=${BUILD}" defer></script>`,
     ];
