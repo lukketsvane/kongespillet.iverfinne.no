@@ -5,7 +5,7 @@
   function age(){return Math.max(0,num(document.documentElement.dataset.fhEffectiveAge||document.querySelector('.age-lockup strong')?.textContent))}
   function score(){const label=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&x.textContent?.trim()==='SCORE');if(!label)return 0;let p=label.parentElement;for(let i=0;p&&i<4;i++,p=p.parentElement){const v=[...p.querySelectorAll('*')].find(x=>x.children.length===0&&/^\s*[\d .]+\s*$/.test(x.textContent||''));if(v)return num(v.textContent)}return 0}
   function elapsed(){const s=Math.floor((performance.now()-st.start)/1000);return `${pad(Math.floor(s/60))}:${pad(s%60)}`}
-  function pause(){const candidates=[...document.querySelectorAll('button')];const b=candidates.find(x=>/pause/i.test((x.getAttribute('aria-label')||'')+' '+(x.textContent||'')));if(b)b.click();else window.__FH_MENU__?.show?.(true)}
+  function pause(){const candidates=[...document.querySelectorAll('button:not(.fh-pause):not(.fh-back)')];const b=candidates.find(x=>/pause/i.test((x.getAttribute('aria-label')||'')+' '+(x.textContent||'')));if(b)b.click();else window.__FH_MENU__?.show?.(true)}
   function menu(){window.__FH_MENU__?.show?.(true)}
   function mount(){
     const board=document.querySelector('.crowd-board');const active=!!board;document.body.classList.toggle('fh-ref-live',active);if(!active){document.querySelector('.fh-native-top')?.remove();document.querySelector('.fh-native-bottom')?.remove();st.board=null;return}
