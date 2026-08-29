@@ -20,10 +20,20 @@ export const CHROME =
 export const script = name =>
   readFileSync(new URL(`../public/${name}`, import.meta.url), 'utf8');
 
-export function stubHtml({ age = 30, figures = 12 } = {}) {
+// `squeezed` reproduces what a phone actually shows when the upstream shell
+// stops matching `.game-shell.fh-compact`: the board is left in a narrow,
+// centred column with wide gutters, instead of filling the screen.
+export function stubHtml({ age = 30, figures = 12, squeezed = false } = {}) {
+  const board = squeezed
+    ? 'position:relative;width:100%;height:60vh;background:#eee'
+    : 'position:relative;width:900px;height:520px;background:#eee';
+  const shell = squeezed
+    ? '.game-shell{box-sizing:border-box;max-width:300px;margin:0 auto;padding:0 46px}'
+    : '';
   return `<!doctype html><meta charset="utf-8"><style>
     body{margin:0;font:14px system-ui}
-    .crowd-board{position:relative;width:900px;height:520px;background:#eee}
+    ${shell}
+    .crowd-board{${board}}
     .crowd-board img{position:absolute;height:8.7%}
     .statrow{display:flex;gap:20px;padding:8px}
   </style>

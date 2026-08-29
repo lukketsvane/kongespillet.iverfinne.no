@@ -4,8 +4,55 @@
   document.documentElement.classList.add('fh-ios');
   let meta=document.querySelector('meta[name="viewport"]');if(!meta){meta=document.createElement('meta');meta.name='viewport';document.head.appendChild(meta)}
   meta.content='width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content';
+  // Full-bleed på telefon, målt i staden for gissa.
+  //
+  // All layout-CSS-en vår heng på `.game-shell.fh-compact`, og `fh-compact`
+  // blir berre sett om `.game-shell` framleis finst oppstraums. Byter den
+  // klassa namn, sluttar kvar einaste regel å gjelde utan eit lyd, og brettet
+  // hamnar i ei smal spalte midt på skjermen. Så vi spør DOM-en i staden: gå
+  // frå brettet og opp, og slakk på det som klemmer det saman.
+  const SIDE=6,TOUCHED='fhIosWidened';
+  function relax(el){
+    const cs=getComputedStyle(el),touched=[];
+    if(parseFloat(cs.paddingLeft)>SIDE){el.style.setProperty('padding-left',`max(${SIDE}px,env(safe-area-inset-left))`,'important');touched.push('padding-left')}
+    if(parseFloat(cs.paddingRight)>SIDE){el.style.setProperty('padding-right',`max(${SIDE}px,env(safe-area-inset-right))`,'important');touched.push('padding-right')}
+    if(parseFloat(cs.marginLeft)>SIDE){el.style.setProperty('margin-left','0','important');touched.push('margin-left')}
+    if(parseFloat(cs.marginRight)>SIDE){el.style.setProperty('margin-right','0','important');touched.push('margin-right')}
+    const mw=parseFloat(cs.maxWidth);
+    if(Number.isFinite(mw)&&mw<innerWidth){el.style.setProperty('max-width','none','important');touched.push('max-width')}
+    if(touched.length)el.dataset[TOUCHED]=[...new Set([...(el.dataset[TOUCHED]||'').split(',').filter(Boolean),...touched])].join(',');
+  }
+  function restore(){
+    document.querySelectorAll('[data-fh-ios-widened]').forEach(el=>{
+      (el.dataset[TOUCHED]||'').split(',').filter(Boolean).forEach(prop=>el.style.removeProperty(prop));
+      delete el.dataset[TOUCHED];
+    });
+  }
+  // Same problem from the other side: `html.fh-ios .crowd-board` sets
+  // `height:auto;flex:1 1 0`, which only ever gives the board a height because
+  // `.game-shell.fh-compact` makes the shell a fixed-height flex column. Miss
+  // that class and the figures are all absolutely positioned, so the board
+  // collapses to nothing. Measure the height too, and fill the screen from
+  // wherever the board starts.
+  const MIN_H=160,FOOT=34;
+  function widen(){
+    const b=document.querySelector('.crowd-board');
+    if(!b)return;
+    if(!matchMedia('(max-width:700px)').matches)return restore();
+    for(let el=b.parentElement;el&&el!==document.documentElement;el=el.parentElement)relax(el);
+    ['width:100%','max-width:none','margin-left:0','margin-right:0'].forEach(rule=>{
+      const [prop,value]=rule.split(':');b.style.setProperty(prop,value,'important');
+    });
+    const r=b.getBoundingClientRect();
+    if(r.height<MIN_H){
+      const room=Math.round((visualViewport?.height||innerHeight)-r.top-FOOT);
+      b.style.setProperty('height',`${Math.max(MIN_H,room)}px`,'important');
+      b.style.setProperty('min-height',`${MIN_H}px`,'important');
+    }
+  }
   function viewport(){const v=window.visualViewport;const h=Math.round(v?.height||innerHeight),w=Math.round(v?.width||innerWidth),top=Math.round(v?.offsetTop||0);document.documentElement.style.setProperty('--fh-vvh',`${h}px`);document.documentElement.style.setProperty('--fh-vvw',`${w}px`);document.documentElement.style.setProperty('--fh-vvo',`${top}px`);document.body.classList.toggle('fh-game-live',!!document.querySelector('.crowd-board'))}
-  viewport();addEventListener('resize',viewport,{passive:true});visualViewport?.addEventListener('resize',viewport,{passive:true});visualViewport?.addEventListener('scroll',viewport,{passive:true});new MutationObserver(viewport).observe(document.documentElement,{childList:true,subtree:true});
+  const sync=()=>{viewport();widen()};
+  sync();addEventListener('resize',sync,{passive:true});addEventListener('orientationchange',sync,{passive:true});visualViewport?.addEventListener('resize',sync,{passive:true});visualViewport?.addEventListener('scroll',viewport,{passive:true});new MutationObserver(sync).observe(document.documentElement,{childList:true,subtree:true});
   const s=document.createElement('style');s.id='fh-ios-style';s.textContent=`
     html.fh-ios,html.fh-ios body{box-sizing:border-box;width:100%;max-width:100%;margin:0;overflow-x:hidden;-webkit-text-size-adjust:100%;overscroll-behavior:none;background:#f7f3e9}
     html.fh-ios body{min-height:var(--fh-vvh,100dvh);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
