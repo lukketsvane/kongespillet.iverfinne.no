@@ -1,10 +1,17 @@
 (()=>{
-  const st={board:null,age:-1,panX:0,panY:0,userZoom:1,pointers:new Map(),pinch0:0,zoom0:1,dragged:false,queued:false,uid:0};
+  const st={board:null,age:-1,panX:0,panY:0,userZoom:1,pointers:new Map(),pinch0:0,zoom0:1,dragged:false,queued:false,uid:0,roundKey:null,roundAge:0};
   const num=v=>Number(String(v||'').replace(/[^0-9.-]/g,''))||0,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
   const age=()=>Math.max(0,num(document.querySelector('.age-lockup strong')?.textContent));
   const population=a=>clamp(Math.round(18+a*1.7),18,140);
   function difficulty(a){const p=population(a);if(a<8)return 1;return clamp(Math.sqrt(p/25),1,2.38)}
+  // Folkemengda høyrer til runden, ikkje til klokka. crowd-assets.js låser
+  // kjeldene til Harald er funnen; utan det same låset her ville kvart år-tikk
+  // (kvart 7.-10. sekund) endre folketalet og stokke om heile brettet medan du
+  // står midt i eit søk. Berre søkeområdet held fram med å vekse med alderen.
+  function roundKey(b){return b.dataset.fhRealRound||'0'}
+  function roundAge(b,a){const k=roundKey(b);if(st.roundKey!==k){st.roundKey=k;st.roundAge=a}return st.roundAge}
+  function advanceRound(){st.panX=st.panY=0;st.userZoom=1;st.roundKey=null;schedule()}
   function people(b){return [...b.querySelectorAll('img.crowd-figure:not(.harald-target)')]}
   function sources(b){return people(b).filter(x=>!x.classList.contains('fh-extra-crowd')&&x.getAttribute('src'))}
   function ensurePopulation(b,a){
@@ -18,7 +25,7 @@
   function layout(b,a){const figs=[...b.querySelectorAll('img.crowd-figure')];if(!figs.length)return;assignUids(figs);const r=b.getBoundingClientRect(),aspect=clamp(r.width/Math.max(1,r.height),.52,1.6),n=figs.length,cols=Math.max(3,Math.ceil(Math.sqrt(n*aspect))),rows=Math.ceil(n/cols),slots=[];for(let rr=0;rr<rows;rr++)for(let c=0;c<cols;c++){const seed=hash(`${a}|slot|${rr}|${c}`),jx=((seed&255)/255-.5)*.34,jy=(((seed>>>8)&255)/255-.5)*.30;slots.push({x:(c+.5+jx)/cols*100,y:(rr+.5+jy)/rows*100,k:hash(`${a}|slotorder|${rr}|${c}`)})}slots.sort((x,y)=>x.k-y.k);figs.sort((x,y)=>hash(`${a}|${x.dataset.fhUid}`)-hash(`${a}|${y.dataset.fhUid}`));figs.forEach((img,i)=>{const s=slots[i%slots.length];img.style.left=`${clamp(s.x,3,97).toFixed(2)}%`;img.style.top=`${clamp(s.y,3,97).toFixed(2)}%`;img.style.right='auto';img.style.bottom='auto';img.style.position='absolute';img.style.zIndex=img.classList.contains('harald-target')?'7':String(1+(hash(img.dataset.fhUid)%3))})}
   function limits(e){const extra=Math.max(0,(e-1)*52);return{x:extra+8,y:extra+10}}
   function apply(){
-    st.queued=false;const b=document.querySelector('.crowd-board');if(!b)return;if(st.board!==b){st.board=b;st.panX=st.panY=0;st.userZoom=1;st.pointers.clear();wire(b)}const a=age();ensurePopulation(b,a);layout(b,a);
+    st.queued=false;const b=document.querySelector('.crowd-board');if(!b)return;if(st.board!==b){st.board=b;st.panX=st.panY=0;st.userZoom=1;st.pointers.clear();st.roundKey=null;wire(b)}const a=age(),ra=roundAge(b,a);ensurePopulation(b,ra);layout(b,ra);
     const base=difficulty(a),e=base*st.userZoom,lim=limits(e);st.panX=clamp(st.panX,-lim.x,lim.x);st.panY=clamp(st.panY,-lim.y,lim.y);b.dataset.fhNavigable=base>1.015?'1':'0';document.documentElement.dataset.fhWorldScale=e.toFixed(2);
     const r=b.getBoundingClientRect();b.querySelectorAll('img.crowd-figure').forEach(img=>{const left=parseFloat(img.style.left),top=parseFloat(img.style.top);if(!Number.isFinite(left)||!Number.isFinite(top))return;const dx=((left-50)/100*r.width*(e-1))+(st.panX/100*r.width),dy=((top-50)/100*r.height*(e-1))+(st.panY/100*r.height);img.style.setProperty('--fh-world-dx',`${dx.toFixed(1)}px`);img.style.setProperty('--fh-world-dy',`${dy.toFixed(1)}px`);const role=img.classList.contains('harald-target')?(parseFloat(img.style.getPropertyValue('--fh-harald-boost'))||1):(parseFloat(img.dataset.fhAssetScale)||1);img.style.setProperty('--fh-render-scale',String(role*st.userZoom));img.style.transform=`translate(calc(-50% + var(--fh-world-dx,0px)),calc(-50% + var(--fh-world-dy,0px)))`});hud(b,base);window.__FH_VERIFIED_RUNTIME?.schedule?.()
   }
@@ -29,5 +36,5 @@
   function style(){if(document.getElementById('fh-world-style'))return;const s=document.createElement('style');s.id='fh-world-style';s.textContent=`
     .crowd-board[data-fh-navigable="1"]{touch-action:none!important;cursor:grab}.crowd-board[data-fh-navigable="1"]:active{cursor:grabbing}.crowd-board img.crowd-figure{transform-origin:center!important;transition:none!important;animation:none!important}.fh-nav-hud{position:absolute;right:8px;bottom:8px;z-index:30;display:flex;gap:7px;align-items:center;padding:6px 8px;border:1px solid #bdb4a5;border-radius:9px;background:#fffdf7e8;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;color:#5f594f}.fh-nav-hud span{font:800 7px/1 system-ui;letter-spacing:.13em}.fh-nav-hud b{font:600 12px/1 Georgia}.fh-nav-hud.hint span{font-size:8px}
   `;document.head.appendChild(s)}
-  style();schedule();new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,characterData:true});addEventListener('resize',schedule,{passive:true});visualViewport?.addEventListener('resize',schedule,{passive:true});window.__FH_WORLD__={schedule,population,get scale(){return difficulty(age())},get zoom(){return st.userZoom}};
+  style();schedule();new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,characterData:true});addEventListener('resize',schedule,{passive:true});visualViewport?.addEventListener('resize',schedule,{passive:true});window.__FH_WORLD__={schedule,advanceRound,population,get scale(){return difficulty(age())},get zoom(){return st.userZoom}};
 })();

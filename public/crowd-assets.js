@@ -42,11 +42,25 @@
     img.classList.add('crowd-figure','fh-real-character');
     img.dataset.fhBroken='0';
     img.style.visibility='visible';
+    img.onload=()=>{img.dataset.fhBroken='0';img.dataset.fhRetries='0';img.style.visibility='visible';img.classList.remove('fh-harald-placeholder')};
     const retry=()=>{
       if(!img.isConnected)return;
       img.dataset.fhBroken='1';
       img.style.visibility='hidden';
-      if(target)return;
+      const tries=(+img.dataset.fhRetries||0)+1;
+      img.dataset.fhRetries=String(tries);
+      if(target){
+        // Harald må aldri bli usynleg. Utan dette blir han ståande som eit tomt
+        // felt — anten gøymd heilt, eller un-gøymd att av mutasjonsstøyen frå
+        // world.js og teikna som ein tom boks. I begge tilfelle ser ikkje
+        // spelaren det eine han skal finne. Prøv portrettet på nytt, gå så over
+        // til eit anna, og teikn til slutt ein synleg markør sjølv.
+        const alts=HARALD.filter(x=>x.src!==src);
+        const next=tries<=2?src:alts.length?alts[hash(`${st.round}|harald|${tries}`)%alts.length].src:src;
+        if(tries>2+alts.length){img.dataset.fhBroken='0';img.style.visibility='visible';img.classList.add('fh-harald-placeholder');return}
+        setTimeout(()=>{if(img.isConnected)img.src=next},120*Math.min(tries,4));
+        return;
+      }
       const p=byYear.get(st.era)||PEOPLE;
       const next=p[hash(`${st.round}|retry|${img.dataset.fhUid||''}|${Date.now()>>12}`)%p.length];
       if(next&&next!==img.src)setTimeout(()=>{img.dataset.fhBroken='0';img.style.visibility='visible';img.src=next},80);
@@ -103,6 +117,7 @@
       .crowd-board img.fh-real-character{height:var(--fh-crowd-body-h,8.7%)!important;width:auto!important;max-width:18%!important;scale:var(--fh-render-scale,1)!important}
       .crowd-board img.harald-target{height:var(--fh-crowd-body-h,8.7%)!important;width:auto!important;max-width:18%!important;object-fit:contain!important;scale:var(--fh-render-scale,1)!important;z-index:7!important}
       .crowd-board img[data-fh-broken="1"]{display:none!important}
+      .crowd-board img.harald-target.fh-harald-placeholder{display:block!important;visibility:visible!important;background:#c9b071;border:2px solid #6b5836;border-radius:4px;min-width:26px}
       @media(max-width:700px){.crowd-board{--fh-crowd-body-h:9%}.crowd-board img.fh-real-character,.crowd-board img.harald-target{max-width:20%!important}}
     `;
     document.head.appendChild(s);
