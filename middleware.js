@@ -4,8 +4,9 @@ const ORIGIN = 'https://finn-harald.iver-raknes-finne.chatgpt.site/';
 const RENDER_MARKER = 'i-n>50&&(n=i,_())';
 const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
+// One fixed competition curve for everyone: density increases with age.
 const CROWD_PATCH = 'Math.round(n*8),24,190);return{targetSize';
-const BUILD = '20260829-ios-quality4';
+const BUILD = '20260829-competition-ios5';
 
 export const config = { matcher: ['/', '/assets/page-:path*'] };
 
@@ -53,10 +54,16 @@ export async function middleware(request) {
     if (!upstream.ok) return NextResponse.next();
     let html = iOSHead(bustGameBundle(await upstream.text()));
     const tags = [
+      `<script src="/crowd-01.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-02.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-03.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-04.js?v=${BUILD}" defer></script>`,
+      `<script src="/crowd-05.js?v=${BUILD}" defer></script>`,
       `<script src="/verified-loader.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-assets.js?v=${BUILD}" defer></script>`,
       `<script src="/crowd-fix.js?v=${BUILD}" defer></script>`,
       `<script src="/enhance.js?v=${BUILD}" defer></script>`,
+      `<script src="/world.js?v=${BUILD}" defer></script>`,
       `<script src="/menu.js?v=${BUILD}" defer></script>`,
       `<script src="/ios.js?v=${BUILD}" defer></script>`,
       `<script src="/usernames.js?v=${BUILD}" defer></script>`,
