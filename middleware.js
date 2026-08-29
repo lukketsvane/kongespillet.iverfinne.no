@@ -6,7 +6,7 @@ const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 // One fixed competition curve for everyone: density increases with age.
 const CROWD_PATCH = 'Math.round(n*8),24,190);return{targetSize';
-const BUILD = '20260829-competition-ios6';
+const BUILD = '20260829-competition-ios7';
 
 export const config = { matcher: ['/', '/assets/page-:path*'] };
 
