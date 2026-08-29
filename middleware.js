@@ -6,7 +6,7 @@ const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 // Hard mode: a dense crowd from the first years, and a much higher ceiling later.
 const CROWD_PATCH = 'Math.round(n*7),18,190);return{targetSize';
-const BUILD = '20260829-menu6';
+const BUILD = '20260829-menu7';
 
 export const config = {
   matcher: ['/', '/assets/page-:path*'],
