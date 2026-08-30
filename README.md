@@ -97,11 +97,14 @@ staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
   let verda vekse med den nye alderen. Utlegget blir sådd av **runde-nummeret**,
   ikkje av alderen: kvart funn gir alle figurane ny plassering, òg når du finn
   kongen så fort at året ikkje har rokke å tikke.
-* **Plasseringa er blå støy, ikkje eit rutenett.** Poisson-disc trekkjer punkt
-  som held ein minsteavstand, og kvart punkt får ei slingring på ein halv radius
-  — men berre om slingringa held avstanden. Det gir klyngjer og opningar slik
-  folk faktisk står, utan tomme felt og utan at nokon blir gøymd. Det gamle
-  rutenettet la 18 personar i seks tydelege kolonnar.
+* **Kvar figur får si eiga plassering — det finst ingen plassar.** Før låg punkta
+  i ein tabell og figurane slo opp i han med `pts[i % lengd]`: eit fast tal
+  plassar, og kom det fleire figurar enn punkt, delte dei plass. No blir kvart
+  punkt kasta for den figuren det høyrer til — nokre kandidatar, ta den som ligg
+  lengst frå alle som alt står der — og stilarket er nøkla på figurens `fh-uid`,
+  ikkje på eit slot-nummer. Ingen rader, ingen kolonnar, ingen faste posisjonar,
+  og alltid like mange plasseringar som figurar. Det gamle rutenettet la 18
+  personar i seks tydelege kolonnar.
 * **Mengda og kongen flyttar seg som eitt.** Plasseringa ligg i eit stilark
   (`#fh-world-slots`), og pan og zoom kjem frå seks variablar på `<html>`.
   Forskyvinga ligg i `translate`-eigenskapen, ikkje i `transform`: CSS byggjer

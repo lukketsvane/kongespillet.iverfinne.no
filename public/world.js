@@ -1,5 +1,5 @@
 (()=>{
-  const st={board:null,age:-1,panX:0,panY:0,userZoom:1,pointers:new Map(),pinch0:0,zoom0:1,dragged:false,queued:false,uid:0,roundKey:null,roundAge:0,pos:new Map(),slotCss:'',layoutKey:'',points:[]};
+  const st={board:null,age:-1,panX:0,panY:0,userZoom:1,pointers:new Map(),pinch0:0,zoom0:1,dragged:false,queued:false,uid:0,roundKey:null,roundAge:0,pos:new Map(),slotCss:'',layoutKey:'',spots:new Map()};
   const num=v=>Number(String(v||'').replace(/[^0-9.-]/g,''))||0,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
   const age=()=>Math.max(0,num(document.querySelector('.age-lockup strong')?.textContent));
@@ -39,71 +39,41 @@
   // dei opphavlege figurane og Harald, og skriv style-attributtet på nytt ved
   // kvar render. Les vi derifrå, blir dei elementa hoppa over medan klonane
   // våre held fram — og då glir mengda frå kongen.
-  // Plasseringa er blå støy (Poisson-disc), ikkje eit rutenett.
+  // Kvar figur får si eiga plassering. Det finst ingen plassar.
   //
-  // Eit rutenett med litt slingring les framleis som eit rutenett: det gamle
-  // utlegget la 18 figurar i seks tydelege kolonnar med ±2 % slingring, og det
-  // ser ut som eit rekneark, ikkje ei folkemengd. Poisson-disc trekkjer punkt
-  // som held ein minsteavstand til kvarandre, så dekninga blir jamn utan at det
-  // finst rader eller kolonnar å lese. Minsteavstanden gjer òg at ingen kan bli
-  // heilt gøymd bak ein annan.
+  // Før låg punkta i ein tabell og figurane slo opp i han med `pts[i % lengd]`.
+  // Det er bokstavleg talt eit fast tal plassar, og kom det fleire figurar enn
+  // punkt, delte dei plass med kvarandre. Eit rutenett med slingring er same
+  // sak: seks kolonnar er seks kolonnar uansett kor mykje du ristar på dei.
+  //
+  // No blir kvart punkt kasta for den figuren det høyrer til: kast nokre
+  // kandidatar, ta den som ligg lengst frå alle som alt står der. Det gir mjuk,
+  // ujamn fordeling utan rader, kolonnar eller faste posisjonar — og alltid
+  // nøyaktig like mange plasseringar som det er figurar.
   function rng(seed){
     let h=hash(seed);
     return()=>{h=(h+0x6D2B79F5)>>>0;let t=h;t=Math.imul(t^(t>>>15),1|t);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296};
   }
-  // Bridson: kast piler rundt aktive punkt, godta dei som held avstanden r.
-  function darts(w,h,r,rand,k=16){
-    const cell=r/Math.SQRT2,gw=Math.max(1,Math.ceil(w/cell)),gh=Math.max(1,Math.ceil(h/cell));
-    const grid=new Int32Array(gw*gh).fill(-1),pts=[],active=[];
-    const put=q=>{grid[Math.floor(q[1]/cell)*gw+Math.floor(q[0]/cell)]=pts.length;pts.push(q);active.push(pts.length-1)};
-    const free=q=>{
-      if(q[0]<0||q[0]>=w||q[1]<0||q[1]>=h)return false;
-      const i=Math.floor(q[0]/cell),j=Math.floor(q[1]/cell);
-      for(let jj=Math.max(0,j-2);jj<=Math.min(gh-1,j+2);jj++)
-        for(let ii=Math.max(0,i-2);ii<=Math.min(gw-1,i+2);ii++){
-          const idx=grid[jj*gw+ii];
-          if(idx>=0&&Math.hypot(pts[idx][0]-q[0],pts[idx][1]-q[1])<r)return false;
+  function place(n,ratio,rand,tries=14){
+    const want=Math.sqrt(ratio/Math.max(1,n))*.78,pts=[];
+    for(let i=0;i<n;i++){
+      let best=null,bestD=-1;
+      for(let t=0;t<tries;t++){
+        const q=[rand()*ratio,rand()];
+        let d=Infinity;
+        for(let k=0;k<pts.length;k++){
+          const dd=Math.hypot(pts[k][0]-q[0],pts[k][1]-q[1]);
+          if(dd<d)d=dd;
         }
-      return true;
-    };
-    put([rand()*w,rand()*h]);
-    while(active.length){
-      const ai=Math.floor(rand()*active.length),p=pts[active[ai]];
-      let placed=false;
-      for(let t=0;t<k;t++){
-        const ang=rand()*Math.PI*2,d=r*(1+rand());
-        const q=[p[0]+Math.cos(ang)*d,p[1]+Math.sin(ang)*d];
-        if(free(q)){put(q);placed=true;break}
+        if(d>bestD){bestD=d;best=q}
+        if(d>=want)break;
       }
-      if(!placed)active.splice(ai,1);
+      pts.push(best);
     }
-    return pts;
-  }
-  // Skrink radien til det er plass til alle, og legg dei ut i prosent av
-  // brettet. z følgjer y, så dei nedste står framfor — slik ei mengd ser ut.
-  function spread(n,ratio,rand){
-    const INSET=3;
-    // Finn ein radius som gir plass til alle, og hugs kva radius det blei.
-    let r=Math.sqrt(ratio/Math.max(1,n))*1.06,used=r,pts=[];
-    for(let i=0;i<9&&pts.length<n;i++,r*=.88){pts=darts(ratio,1,r,rand);used=r}
-    for(let i=pts.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[pts[i],pts[j]]=[pts[j],pts[i]]}
-    // Rein blå støy er mekanisk jamn — like langt til naboen overalt. Ei
-    // slingring på ein halv radius gir klyngjer og opningar slik folk faktisk
-    // står, utan å opne dei store tomme felta eit tilfeldig utval ville late
-    // etter seg. Halve radien er lite nok til at ingen blir heilt gøymd.
-    const j=used*.5,keep=used*.66,span=100-INSET*2;
-    const chosen=pts.slice(0,n);
-    // Slingringa må ikkje føre nokon oppå ein annan. Godta eit kast berre om
-    // det held minsteavstanden til alle andre; elles blir punktet ståande.
-    const near=(q,skip)=>chosen.some((o,k)=>k!==skip&&Math.hypot(o[0]-q[0],o[1]-q[1])<keep);
-    chosen.forEach((q,i)=>{
-      const a=rand()*Math.PI*2,d=rand()*j;
-      const t=[clamp(q[0]+Math.cos(a)*d,0,ratio),clamp(q[1]+Math.sin(a)*d,0,1)];
-      if(!near(t,i))chosen[i]=t;
-    });
-    return chosen
-      .map(q=>({x:q[0],y:q[1]}))
-      .map(q=>({x:INSET+q.x/ratio*span,y:INSET+q.y*span}))
+    // z følgjer y, så dei nedste står framfor — slik ei mengd ser ut.
+    const INSET=3,span=100-INSET*2;
+    return pts
+      .map(q=>({x:INSET+q[0]/ratio*span,y:INSET+q[1]*span}))
       .sort((a,b)=>a.y-b.y)
       .map((q,i)=>({...q,z:1+i}));
   }
@@ -114,18 +84,21 @@
     assignUids(figs);
     const r=b.getBoundingClientRect(),n=figs.length;
     const ratio=clamp(r.width/Math.max(1,r.height),.3,3.2);
-    // Å trekkje punkta er for dyrt til å gjere kvar frame, og dei endrar seg
-    // berre når runden, folketalet eller brettforma gjer det.
     const key=`${seed}|${n}|${ratio.toFixed(2)}`;
-    if(key!==st.layoutKey){st.layoutKey=key;st.points=spread(n,ratio,rng(key))}
-    const pts=st.points;if(!pts.length)return;
-    figs.sort((x,y)=>hash(`${seed}|${x.dataset.fhUid}`)-hash(`${seed}|${y.dataset.fhUid}`));
+    if(key!==st.layoutKey){
+      st.layoutKey=key;
+      const order=figs.slice().sort((x,y)=>hash(`${seed}|${x.dataset.fhUid}`)-hash(`${seed}|${y.dataset.fhUid}`));
+      const pts=place(n,ratio,rng(key));
+      st.spots=new Map();
+      order.forEach((img,i)=>st.spots.set(img.dataset.fhUid,pts[i]));
+    }
     st.pos.clear();
     figs.forEach((img,i)=>{
-      const q=pts[i%pts.length],king=img.classList.contains('harald-target');
+      const q=st.spots.get(img.dataset.fhUid);if(!q)return;
+      const king=img.classList.contains('harald-target');
       const role=king?(parseFloat(img.style.getPropertyValue('--fh-harald-boost'))||1):(parseFloat(img.dataset.fhAssetScale)||1);
       img.dataset.fhSlot=String(i);
-      st.pos.set(i,{x:q.x,y:q.y,role,z:q.z});
+      st.pos.set(img.dataset.fhUid,{x:q.x,y:q.y,role,z:q.z});
     });
     paintSlots();
   }
@@ -134,7 +107,7 @@
   // endrar seg.
   function paintSlots(){
     let css='';
-    st.pos.forEach((v,i)=>{css+=`.crowd-board img[data-fh-slot="${i}"]{left:${v.x.toFixed(2)}%!important;top:${v.y.toFixed(2)}%!important;--fh-x:${v.x.toFixed(2)};--fh-y:${v.y.toFixed(2)};--fh-role:${v.role};z-index:${v.z}!important}`});
+    st.pos.forEach((v,uid)=>{css+=`.crowd-board img[data-fh-uid="${uid}"]{left:${v.x.toFixed(2)}%!important;top:${v.y.toFixed(2)}%!important;--fh-x:${v.x.toFixed(2)};--fh-y:${v.y.toFixed(2)};--fh-role:${v.role};z-index:${v.z}!important}`});
     if(css===st.slotCss)return;
     st.slotCss=css;
     let el=document.getElementById('fh-world-slots');
