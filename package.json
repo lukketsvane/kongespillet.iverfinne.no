@@ -13,7 +13,8 @@
     "test:first-click": "node tools/first-click-smoke.mjs",
     "test:penalty": "node tools/penalty-test.mjs",
     "test:crowd": "node tools/crowd-test.mjs",
-    "test": "npm run test:penalty && npm run test:crowd"
+    "test:layout": "node tools/layout-test.mjs",
+    "test": "npm run test:penalty && npm run test:crowd && npm run test:layout"
   },
   "dependencies": {
     "next": "15.5.21",
