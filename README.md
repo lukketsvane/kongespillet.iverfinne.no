@@ -32,6 +32,7 @@ Alt vi eig ligg i `public/` og blir lagt inn på sida av middlewaren, i denne
 rekkjefølgja:
 
 ```
+board.js             finn folkemengda om oppstraums byter klassenamn
 crowd-assets.js      folkemengda og Harald-portretta, låst per runde
 crowd-fix.js         slår av arva filter og animasjonar
 enhance.js           alders-klokka, bom-straffa, verdslista, mobil-layout
@@ -41,6 +42,18 @@ ios.js               safe-area og iOS-særheiter
 usernames.js         namn på spelarar
 music.js             lydsporet
 ```
+
+**`board.js` går først, og er grunnen til at resten verkar i det heile.** Alt
+som gjeld mengda — plassering, panorering, tettleik, breidd og høgd — spør etter
+`.crowd-board`. Sluttar oppstraums å bruke den klassa, gjer kvart einaste av dei
+skripta ingenting, heilt stille: du får oppstraums sitt rutenett, deira folketal
+og deira figurar. `.masthead` finst framleis, så menyen og aldersklokka held
+fram med å virke, og sida ser frisk ut medan halve spelet er kopla frå.
+`board.js` leitar seg fram i staden: figurane er mange bilete av liknande
+storleik, og brettet er det djupaste elementet som held nesten alle. Set
+`data-fh-board` på `<html>` til `native`, `adopted` eller `adopted-nokings` — det
+siste når kongen ikkje lèt seg kjenne att, og då blir bileta ståande urørte, for
+å byte dei ut utan å vite kven som er kongen gjer runden uvinnbar.
 
 Rekkjefølgja er ikkje tilfeldig: `crowd-assets.js` set runde-nummeret som
 `world.js` les, og `enhance.js` set `data-fh-effective-age` som
@@ -106,6 +119,7 @@ npm run test:crowd        # runde-låsen, og at Harald aldri blir usynleg
 npm run test:layout       # at brettet fyller skjermen på telefon
 npm run test:pinch        # at mengda og kongen flyttar seg som eitt
 npm run test:placement    # tettleik, ingen rutenett, ingen tomrom, ingen gøymde
+npm run test:board        # at mengda blir funnen sjølv om klassenamna endrar seg
 npm run test:first-click  # røyktest av første klikk
 npm run playtest          # klikkar gjennom fleire nivå
 ```

@@ -16,7 +16,8 @@
     "test:layout": "node tools/layout-test.mjs",
     "test:pinch": "node tools/pinch-test.mjs",
     "test:placement": "node tools/placement-test.mjs",
-    "test": "npm run test:penalty && npm run test:crowd && npm run test:layout && npm run test:pinch && npm run test:placement"
+    "test:board": "node tools/board-test.mjs",
+    "test": "npm run test:penalty && npm run test:crowd && npm run test:layout && npm run test:pinch && npm run test:placement && npm run test:board"
   },
   "dependencies": {
     "next": "15.5.21",
