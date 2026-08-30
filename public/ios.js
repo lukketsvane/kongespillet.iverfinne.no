@@ -20,6 +20,11 @@
     if(parseFloat(cs.marginRight)>SIDE){el.style.setProperty('margin-right','0','important');touched.push('margin-right')}
     const mw=parseFloat(cs.maxWidth);
     if(Number.isFinite(mw)&&mw<innerWidth){el.style.setProperty('max-width','none','important');touched.push('max-width')}
+    // An explicit width narrower than the screen squeezes just as hard as a
+    // max-width, and is what the first attempt at this missed.
+    const w=parseFloat(cs.width);
+    if(Number.isFinite(w)&&w<innerWidth-12){el.style.setProperty('width','auto','important');touched.push('width')}
+    if(cs.overflowX!=='visible'){el.style.setProperty('overflow-x','visible','important');touched.push('overflow-x')}
     if(touched.length)el.dataset[TOUCHED]=[...new Set([...(el.dataset[TOUCHED]||'').split(',').filter(Boolean),...touched])].join(',');
   }
   function restore(){
@@ -43,12 +48,27 @@
     ['width:100%','max-width:none','margin-left:0','margin-right:0'].forEach(rule=>{
       const [prop,value]=rule.split(':');b.style.setProperty(prop,value,'important');
     });
-    const r=b.getBoundingClientRect();
+    let r=b.getBoundingClientRect();
+    // Loosening the ancestors is the tidy path, but it only works if we
+    // guessed the squeezing property right. Verify, and if the board is still
+    // short of the screen, place it against the edge outright.
+    if(r.width<innerWidth-12||r.left>8){
+      b.style.setProperty('position','relative','important');
+      b.style.setProperty('width',`${innerWidth}px`,'important');
+      b.style.setProperty('left',`${Math.round(-r.left)}px`,'important');
+      r=b.getBoundingClientRect();
+      if(Math.abs(r.left)>1){
+        b.style.setProperty('left',`${Math.round(-r.left+parseFloat(b.style.left||0))}px`,'important');
+        r=b.getBoundingClientRect();
+      }
+    }
     if(r.height<MIN_H){
       const room=Math.round((visualViewport?.height||innerHeight)-r.top-FOOT);
       b.style.setProperty('height',`${Math.max(MIN_H,room)}px`,'important');
       b.style.setProperty('min-height',`${MIN_H}px`,'important');
     }
+    document.documentElement.style.setProperty('overflow-x','hidden','important');
+    document.body?.style.setProperty('overflow-x','hidden','important');
   }
   function viewport(){const v=window.visualViewport;const h=Math.round(v?.height||innerHeight),w=Math.round(v?.width||innerWidth),top=Math.round(v?.offsetTop||0);document.documentElement.style.setProperty('--fh-vvh',`${h}px`);document.documentElement.style.setProperty('--fh-vvw',`${w}px`);document.documentElement.style.setProperty('--fh-vvo',`${top}px`);document.body.classList.toggle('fh-game-live',!!document.querySelector('.crowd-board'))}
   const sync=()=>{viewport();widen()};

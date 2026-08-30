@@ -27,9 +27,14 @@ export function stubHtml({ age = 30, figures = 12, squeezed = false } = {}) {
   const board = squeezed
     ? 'position:relative;width:100%;height:60vh;background:#eee'
     : 'position:relative;width:900px;height:520px;background:#eee';
-  const shell = squeezed
-    ? '.game-shell{box-sizing:border-box;max-width:300px;margin:0 auto;padding:0 46px}'
-    : '';
+  // Two ways a shell can squeeze the board. `padding` is max-width plus
+  // gutters; `width` is an explicit narrow width, which a fix that only
+  // relaxes max-width and padding would miss entirely.
+  const shell = squeezed === 'width'
+    ? '.game-shell{box-sizing:border-box;width:290px;margin:0 auto}'
+    : squeezed
+      ? '.game-shell{box-sizing:border-box;max-width:300px;margin:0 auto;padding:0 46px}'
+      : '';
   return `<!doctype html><meta charset="utf-8"><style>
     body{margin:0;font:14px system-ui}
     ${shell}
