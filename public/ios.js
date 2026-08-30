@@ -12,6 +12,7 @@
   // hamnar i ei smal spalte midt på skjermen. Så vi spør DOM-en i staden: gå
   // frå brettet og opp, og slakk på det som klemmer det saman.
   const SIDE=6,TOUCHED='fhIosWidened';
+  const lim=(v,a,z)=>Math.max(a,Math.min(z,v));
   function relax(el){
     const cs=getComputedStyle(el),touched=[];
     if(parseFloat(cs.paddingLeft)>SIDE){el.style.setProperty('padding-left',`max(${SIDE}px,env(safe-area-inset-left))`,'important');touched.push('padding-left')}
@@ -39,7 +40,7 @@
   // that class and the figures are all absolutely positioned, so the board
   // collapses to nothing. Measure the height too, and fill the screen from
   // wherever the board starts.
-  const MIN_H=160,FOOT=34;
+  const MIN_H=160,FOOT=34,BOTTOM=2;   // BOTTOM: litt luft mot skjermkanten
   function widen(){
     const b=document.querySelector('.crowd-board');
     if(!b)return;
@@ -62,13 +63,46 @@
         r=b.getBoundingClientRect();
       }
     }
-    if(r.height<MIN_H){
-      const room=Math.round((visualViewport?.height||innerHeight)-r.top-FOOT);
-      b.style.setProperty('height',`${Math.max(MIN_H,room)}px`,'important');
-      b.style.setProperty('min-height',`${MIN_H}px`,'important');
+    fitHeight(b);
+  }
+  // Lås sida til skjermen og gi brettet resten.
+  //
+  // Same problem som breidda: `.game-shell.fh-compact` skulle gjere skalet til
+  // ei flex-kolonne med fast høgd, og gjer det ikkje, blir sida høgare enn
+  // skjermen og du kan skrolle. Så vi måler i staden — set ei høgd på brettet,
+  // sjekk om dokumentet framleis er høgare enn skjermen, og trekk frå
+  // differansen til det stemmer. Ingenting å skrolle når ingenting stikk ut.
+  function fitHeight(b){
+    const doc=document.documentElement,body=document.body;
+    const vh=Math.round(visualViewport?.height||innerHeight);
+    doc.style.setProperty('height',`${vh}px`,'important');
+    doc.style.setProperty('overflow','hidden','important');
+    doc.style.setProperty('overscroll-behavior','none','important');
+    if(body){
+      body.style.setProperty('height',`${vh}px`,'important');
+      body.style.setProperty('overflow','hidden','important');
+      body.style.setProperty('overscroll-behavior','none','important');
+      body.style.setProperty('margin','0','important');
     }
-    document.documentElement.style.setProperty('overflow-x','hidden','important');
-    document.body?.style.setProperty('overflow-x','hidden','important');
+    b.style.setProperty('max-height','none','important');
+    b.style.setProperty('min-height','0','important');
+    b.style.setProperty('flex','0 0 auto','important');
+    // Kor langt ned innhaldet faktisk rekk. scrollHeight duger ikkje: body har
+    // overflow:hidden, så det som stikk ut blir klipt vekk og talet ser rett ut
+    // sjølv når bunnteksten står under skjermkanten og ikkje kan nåast. Rektangla
+    // fortel sanninga — klipping endrar ikkje utrekninga.
+    const shell=(()=>{let el=b;while(el.parentElement&&el.parentElement!==document.body)el=el.parentElement;return el})();
+    const reach=()=>Math.max(...[...shell.children].map(el=>el.getBoundingClientRect().bottom));
+    let h=lim(Math.round(vh-b.getBoundingClientRect().top-FOOT),MIN_H,vh);
+    b.style.setProperty('height',`${h}px`,'important');
+    for(let i=0;i<6;i++){
+      const over=Math.round(reach()-vh+BOTTOM);
+      if(Math.abs(over)<=1)break;
+      const next=lim(h-over,MIN_H,vh);
+      if(next===h)break;
+      h=next;
+      b.style.setProperty('height',`${h}px`,'important');
+    }
   }
   function viewport(){const v=window.visualViewport;const h=Math.round(v?.height||innerHeight),w=Math.round(v?.width||innerWidth),top=Math.round(v?.offsetTop||0);document.documentElement.style.setProperty('--fh-vvh',`${h}px`);document.documentElement.style.setProperty('--fh-vvw',`${w}px`);document.documentElement.style.setProperty('--fh-vvo',`${top}px`);document.body.classList.toggle('fh-game-live',!!document.querySelector('.crowd-board'))}
   const sync=()=>{viewport();widen()};
