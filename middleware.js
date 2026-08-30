@@ -6,7 +6,7 @@ const RENDER_PATCH = 'i-n>100&&(n=i,_())';
 const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 // Keep the upstream React crowd modest; world.js guarantees the single fair competition population.
 const CROWD_PATCH = 'Math.round(n*2),8,28);return{targetSize';
-const BUILD = '20260830-reshuffle1';
+const BUILD = '20260830-crowd1';
 
 export const config = { matcher: ['/', '/assets/page-:path*'] };
 

@@ -64,8 +64,12 @@ staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
 * **Eit bomtrykk kostar eitt år.** Panorering og knip kostar ingenting — det er
   slik du leitar. `enhance.js` skil dei ved å vente på at fingeren slepper: eit
   drag over 8 px, eller ein finger nummer to, avlyser straffa.
-* Frå Harald er 8 år veks verda forbi skjermen, og du må dra og knipe for å sjå
-  heile torget.
+* **Tettleiken er fast, arealet veks.** Du ser rundt 66 personar om gongen, same
+  kor gammal Harald er — det er *området* som blir større, frå éin skjerm til
+  2,35 skjermar på tvers, med opptil 260 personar i. Før voks verda medan
+  folketalet voks for seg, så meir zoom spreidde dei same få figurane tynnare:
+  ved 30 år var det 69 personar over 2,8 skjermflater, altså rundt ti synlege om
+  gongen. Frå 6 år og oppover må du dra og knipe for å sjå heile torget.
 * **Runden er låst.** Folk, folketal, plassering og søkeområde står heilt
   stille til du finn Harald. `crowd-assets.js` set `data-fh-real-round` på
   brettet, og `world.js` heng både utlegget og skalaen sin på det same
@@ -74,6 +78,11 @@ staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
   let verda vekse med den nye alderen. Utlegget blir sådd av **runde-nummeret**,
   ikkje av alderen: kvart funn gir alle figurane ny plassering, òg når du finn
   kongen så fort at året ikkje har rokke å tikke.
+* **Plasseringa er blå støy, ikkje eit rutenett.** Poisson-disc trekkjer punkt
+  som held ein minsteavstand, og kvart punkt får ei slingring på ein halv radius
+  — men berre om slingringa held avstanden. Det gir klyngjer og opningar slik
+  folk faktisk står, utan tomme felt og utan at nokon blir gøymd. Det gamle
+  rutenettet la 18 personar i seks tydelege kolonnar.
 * **Mengda og kongen flyttar seg som eitt.** Plasseringa ligg i eit stilark
   (`#fh-world-slots`), og pan og zoom kjem frå seks variablar på `<html>`.
   Forskyvinga ligg i `translate`-eigenskapen, ikkje i `transform`: CSS byggjer
@@ -90,6 +99,7 @@ npm run test:penalty      # bom-straffa: drag og knip er gratis, bom kostar eit 
 npm run test:crowd        # runde-låsen, og at Harald aldri blir usynleg
 npm run test:layout       # at brettet fyller skjermen på telefon
 npm run test:pinch        # at mengda og kongen flyttar seg som eitt
+npm run test:placement    # tettleik, ingen rutenett, ingen tomrom, ingen gøymde
 npm run test:first-click  # røyktest av første klikk
 npm run playtest          # klikkar gjennom fleire nivå
 ```
