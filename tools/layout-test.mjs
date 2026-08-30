@@ -17,16 +17,23 @@ const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) ' +
 const { check, done } = reporter();
 const browser = await chromium.launch({ executablePath: CHROME });
 
-async function measure({ viewport, withFix, squeezed = true }) {
+async function measure({ viewport, withFix, squeezed = true, tall = false }) {
   const page = await browser.newPage({ viewport, userAgent: IPHONE_UA });
-  await page.setContent(stubHtml({ age: 30, squeezed }));
+  await page.setContent(stubHtml({ age: 30, squeezed, tall }));
   if (withFix) await page.addScriptTag({ content: script('ios.js') });
   await page.waitForTimeout(250);
   const m = await page.evaluate(() => {
     const r = document.querySelector('.crowd-board').getBoundingClientRect();
     return { left: r.left, right: r.right, width: r.width, height: r.height,
-             vw: innerWidth, vh: innerHeight,
-             scrollW: document.documentElement.scrollWidth };
+             bottom: r.bottom, vw: innerWidth, vh: innerHeight,
+             scrollW: document.documentElement.scrollWidth,
+             scrollH: document.documentElement.scrollHeight,
+             // What the page actually reaches. scrollHeight lies once body is
+             // clipped: content below the fold is simply unreachable, and the
+             // number still reads as a perfect fit.
+             reach: Math.max(...[...document.querySelector('.game-shell').children]
+               .map(el => el.getBoundingClientRect().bottom)),
+             footerBottom: document.querySelector('.game-footer')?.getBoundingClientRect().bottom };
   });
   await page.close();
   return m;
@@ -59,6 +66,21 @@ check('an explicit narrow width is squeezed too', wBefore.width < wBefore.vw * 0
 check('the board fills the screen there too', wAfter.width >= wAfter.vw - 14,
   `${Math.round(wAfter.width)}px of ${wAfter.vw}px`);
 check('and starts at the edge', wAfter.left <= 7, `left: ${Math.round(wAfter.left)}px`);
+
+// The page has to end at the bottom of the screen: nothing to scroll, and the
+// footer still on screen rather than pushed off it.
+const tBefore = await measure({ viewport: PHONE, withFix: false, tall: true });
+const tAfter = await measure({ viewport: PHONE, withFix: true, tall: true });
+check('the stub reproduces an overflowing page', tBefore.reach > tBefore.vh + 50,
+  `content reaches ${Math.round(tBefore.reach)}px against a ${tBefore.vh}px screen`);
+check('the page ends at the bottom of the screen', tAfter.reach <= tAfter.vh + 1,
+  `content reaches ${Math.round(tAfter.reach)}px, screen ${tAfter.vh}px`);
+check('the footer is fully on screen', tAfter.footerBottom <= tAfter.vh + 1,
+  `footer bottom ${Math.round(tAfter.footerBottom)}px`);
+check('the board ends above the bottom edge', tAfter.bottom <= tAfter.vh + 1,
+  `board bottom ${Math.round(tAfter.bottom)}px`);
+check('the board still gets most of the screen', tAfter.height > tAfter.vh * 0.55,
+  `${Math.round(tAfter.height)}px of ${tAfter.vh}px`);
 
 // On a wide screen the centred column is the intended design, so leave it be.
 const desktop = await measure({ viewport: DESKTOP, withFix: true });

@@ -64,6 +64,12 @@ staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
 * **Eit bomtrykk kostar eitt år.** Panorering og knip kostar ingenting — det er
   slik du leitar. `enhance.js` skil dei ved å vente på at fingeren slepper: eit
   drag over 8 px, eller ein finger nummer to, avlyser straffa.
+* **Sida er låst til skjermen.** `ios.js` set høgda på `html` og `body` til den
+  synlege viewporten, slår av skrolling, og gir brettet nøyaktig det som er att
+  når masthead, statlinje og bunntekst har fått sitt. Høgda blir målt og
+  korrigert, ikkje gissa: `scrollHeight` duger ikkje, for `body` er klipt, så
+  det som stikk ut under skjermkanten blir usynleg *og* uråd å nå, medan talet
+  framleis ser ut som ein perfekt passform. Rektangla fortel sanninga.
 * **Tettleiken er fast, arealet veks.** Du ser rundt 66 personar om gongen, same
   kor gammal Harald er — det er *området* som blir større, frå éin skjerm til
   2,35 skjermar på tvers, med opptil 260 personar i. Før voks verda medan

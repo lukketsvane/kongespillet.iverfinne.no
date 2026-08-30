@@ -23,10 +23,15 @@ export const script = name =>
 // `squeezed` reproduces what a phone actually shows when the upstream shell
 // stops matching `.game-shell.fh-compact`: the board is left in a narrow,
 // centred column with wide gutters, instead of filling the screen.
-export function stubHtml({ age = 30, figures = 12, squeezed = false } = {}) {
-  const board = squeezed
-    ? 'position:relative;width:100%;height:60vh;background:#eee'
-    : 'position:relative;width:900px;height:520px;background:#eee';
+export function stubHtml({ age = 30, figures = 12, squeezed = false, tall = false } = {}) {
+  // `tall` makes the page overflow the screen the way it does on a phone when
+  // the shell never becomes a fixed-height flex column: the board keeps its own
+  // height and the footer is pushed off the bottom.
+  const board = tall
+    ? 'position:relative;width:100%;height:1100px;background:#eee'
+    : squeezed
+      ? 'position:relative;width:100%;height:60vh;background:#eee'
+      : 'position:relative;width:900px;height:520px;background:#eee';
   // Two ways a shell can squeeze the board. `padding` is max-width plus
   // gutters; `width` is an explicit narrow width, which a fix that only
   // relaxes max-width and padding would miss entirely.
@@ -56,6 +61,10 @@ export function stubHtml({ age = 30, figures = 12, squeezed = false } = {}) {
       ${Array.from({ length: figures }, (_, i) =>
         `<img class="crowd-figure" src="${PIXEL}" style="left:${8 + i * 7}%;top:${20 + (i % 4) * 18}%">`).join('')}
     </div>
+    <footer class="game-footer" style="padding:8px 0;font:12px system-ui;color:#6e695e">
+      <div style="display:flex;justify-content:space-between">TID 1.0 s<span>FOLK 18</span></div>
+      <p style="margin:8px 0 0;font:italic 14px Georgia">Jo raskare du finn han, jo lengre lever kongen.</p>
+    </footer>
   </div>`;
 }
 
