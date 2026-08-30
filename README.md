@@ -71,7 +71,9 @@ staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
   brettet, og `world.js` heng både utlegget og skalaen sin på det same
   nummeret. Når du finn kongen, kallar `crowd-assets.js`
   `__FH_WORLD__.advanceRound()`, som sentrerer utsynet, legg mengda på nytt og
-  let verda vekse med den nye alderen.
+  let verda vekse med den nye alderen. Utlegget blir sådd av **runde-nummeret**,
+  ikkje av alderen: kvart funn gir alle figurane ny plassering, òg når du finn
+  kongen så fort at året ikkje har rokke å tikke.
 * **Mengda og kongen flyttar seg som eitt.** Plasseringa ligg i eit stilark
   (`#fh-world-slots`), og pan og zoom kjem frå seks variablar på `<html>`.
   Forskyvinga ligg i `translate`-eigenskapen, ikkje i `transform`: CSS byggjer
