@@ -17,9 +17,9 @@ const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) ' +
 const { check, done } = reporter();
 const browser = await chromium.launch({ executablePath: CHROME });
 
-async function measure({ viewport, withFix }) {
+async function measure({ viewport, withFix, squeezed = true }) {
   const page = await browser.newPage({ viewport, userAgent: IPHONE_UA });
-  await page.setContent(stubHtml({ age: 30, squeezed: true }));
+  await page.setContent(stubHtml({ age: 30, squeezed }));
   if (withFix) await page.addScriptTag({ content: script('ios.js') });
   await page.waitForTimeout(250);
   const m = await page.evaluate(() => {
@@ -50,6 +50,15 @@ check('nothing overflows sideways', after.scrollW <= after.vw + 1,
 // height has to be measured and filled in too.
 check('the board keeps a usable height', after.height > after.vh * 0.4,
   `${Math.round(after.height)}px of ${after.vh}px`);
+
+// A shell narrowed by an explicit width, rather than padding or max-width.
+const wBefore = await measure({ viewport: PHONE, withFix: false, squeezed: 'width' });
+const wAfter = await measure({ viewport: PHONE, withFix: true, squeezed: 'width' });
+check('an explicit narrow width is squeezed too', wBefore.width < wBefore.vw * 0.8,
+  `${Math.round(wBefore.width)}px of ${wBefore.vw}px`);
+check('the board fills the screen there too', wAfter.width >= wAfter.vw - 14,
+  `${Math.round(wAfter.width)}px of ${wAfter.vw}px`);
+check('and starts at the edge', wAfter.left <= 7, `left: ${Math.round(wAfter.left)}px`);
 
 // On a wide screen the centred column is the intended design, so leave it be.
 const desktop = await measure({ viewport: DESKTOP, withFix: true });

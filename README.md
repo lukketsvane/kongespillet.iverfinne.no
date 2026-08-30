@@ -66,11 +66,18 @@ staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
   drag over 8 px, eller ein finger nummer to, avlyser straffa.
 * Frå Harald er 8 år veks verda forbi skjermen, og du må dra og knipe for å sjå
   heile torget.
-* **Runden er låst.** Folk, folketal og plassering står stille til du finn
-  Harald — berre søkeområdet held fram med å vekse med alderen. `crowd-assets.js`
-  set `data-fh-real-round` på brettet, og `world.js` heng utlegget sitt på det
-  same nummeret. Når du finn kongen, kallar `crowd-assets.js`
-  `__FH_WORLD__.advanceRound()`, som sentrerer utsynet og legg mengda på nytt.
+* **Runden er låst.** Folk, folketal, plassering og søkeområde står heilt
+  stille til du finn Harald. `crowd-assets.js` set `data-fh-real-round` på
+  brettet, og `world.js` heng både utlegget og skalaen sin på det same
+  nummeret. Når du finn kongen, kallar `crowd-assets.js`
+  `__FH_WORLD__.advanceRound()`, som sentrerer utsynet, legg mengda på nytt og
+  let verda vekse med den nye alderen.
+* **Mengda og kongen flyttar seg som eitt.** Plasseringa ligg i eit stilark
+  (`#fh-world-slots`), og pan og zoom kjem frå seks variablar på `<html>`.
+  Forskyvinga ligg i `translate`-eigenskapen, ikkje i `transform`: CSS byggjer
+  matrisa som `translate · rotate · scale · transform`, så alt som ligg i
+  `transform` blir gonga med figurens eigen `scale` — og Harald har sin eigen
+  (`physicalHarald`). Låg den der, drog kongen frå mengda under zoom.
 
 ## Utvikling
 
@@ -79,6 +86,8 @@ npm install
 npm test                  # begge testane under
 npm run test:penalty      # bom-straffa: drag og knip er gratis, bom kostar eit år
 npm run test:crowd        # runde-låsen, og at Harald aldri blir usynleg
+npm run test:layout       # at brettet fyller skjermen på telefon
+npm run test:pinch        # at mengda og kongen flyttar seg som eitt
 npm run test:first-click  # røyktest av første klikk
 npm run playtest          # klikkar gjennom fleire nivå
 ```

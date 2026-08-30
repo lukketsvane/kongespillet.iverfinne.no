@@ -41,10 +41,14 @@ check('Harald is visible when images load', shown(await harald()));
 
 // Positions must hold while the clock ticks: crowd-assets.js locks the sources
 // to the round, and the layout has to be locked to the same round.
+// Measure where each figure actually renders. world.js keeps the layout in a
+// stylesheet rather than inline styles, so reading el.style.left would compare
+// empty strings and pass no matter what moved.
 const snapshot = () => page.evaluate(() => {
   const out = {};
   document.querySelectorAll('.crowd-board img.crowd-figure').forEach(el => {
-    out[el.dataset.fhUid || el.className] = `${el.style.left}/${el.style.top}`;
+    const r = el.getBoundingClientRect();
+    out[el.dataset.fhUid || el.className] = `${r.x.toFixed(1)}/${r.y.toFixed(1)}`;
   });
   return out;
 });
