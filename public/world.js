@@ -1,10 +1,21 @@
 (()=>{
-  const st={board:null,age:-1,panX:0,panY:0,userZoom:1,pointers:new Map(),pinch0:0,zoom0:1,dragged:false,queued:false,uid:0,roundKey:null,roundAge:0,pos:new Map(),slotCss:''};
+  const st={board:null,age:-1,panX:0,panY:0,userZoom:1,pointers:new Map(),pinch0:0,zoom0:1,dragged:false,queued:false,uid:0,roundKey:null,roundAge:0,pos:new Map(),slotCss:'',layoutKey:'',points:[]};
   const num=v=>Number(String(v||'').replace(/[^0-9.-]/g,''))||0,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
   const age=()=>Math.max(0,num(document.querySelector('.age-lockup strong')?.textContent));
-  const population=a=>clamp(Math.round(18+a*1.7),18,140);
-  function difficulty(a){const p=population(a);if(a<8)return 1;return clamp(Math.sqrt(p/25),1,2.38)}
+  // Folketalet følgjer arealet, ikkje alderen direkte.
+  //
+  // Før voks verda med `difficulty` medan folketalet voks for seg — så meir
+  // zoom spreidde dei same få figurane tynnare utover. Ved 30 år var verda 2,8
+  // skjermflater stor med 69 personar i, altså rundt ti synlege om gongen: eit
+  // tomt rom å panorere rundt i, ikkje ei folkemengd. No er tettleiken fast, og
+  // det er *arealet* som veks med alderen. Du ser like mange uansett kor gammal
+  // Harald er — det er området som blir større.
+  const DENSITY=66;                                   // figurar per skjermflate
+  const MAX_FIGURES=260;                              // tak av omsyn til telefonen
+  function span(a){return a<6?1:clamp(1+(a-6)*.0195,1,2.35)}   // skjermar på tvers
+  const population=a=>clamp(Math.round(DENSITY*span(a)**2),DENSITY,MAX_FIGURES);
+  function difficulty(a){return span(a)}
   // Folkemengda høyrer til runden, ikkje til klokka. crowd-assets.js låser
   // kjeldene til Harald er funnen; utan det same låset her ville kvart år-tikk
   // (kvart 7.-10. sekund) endre folketalet og stokke om heile brettet medan du
@@ -28,26 +39,93 @@
   // dei opphavlege figurane og Harald, og skriv style-attributtet på nytt ved
   // kvar render. Les vi derifrå, blir dei elementa hoppa over medan klonane
   // våre held fram — og då glir mengda frå kongen.
-  // Utlegget blir sådd av runden, ikkje berre alderen. Sådde vi berre på
-  // alderen, fekk ein runde som blei vunnen før neste år-tikk nøyaktig same
-  // plassering om att — og poenget er at mengda skal stokkast om for kvart funn.
-  function layout(b,a){
+  // Plasseringa er blå støy (Poisson-disc), ikkje eit rutenett.
+  //
+  // Eit rutenett med litt slingring les framleis som eit rutenett: det gamle
+  // utlegget la 18 figurar i seks tydelege kolonnar med ±2 % slingring, og det
+  // ser ut som eit rekneark, ikkje ei folkemengd. Poisson-disc trekkjer punkt
+  // som held ein minsteavstand til kvarandre, så dekninga blir jamn utan at det
+  // finst rader eller kolonnar å lese. Minsteavstanden gjer òg at ingen kan bli
+  // heilt gøymd bak ein annan.
+  function rng(seed){
+    let h=hash(seed);
+    return()=>{h=(h+0x6D2B79F5)>>>0;let t=h;t=Math.imul(t^(t>>>15),1|t);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296};
+  }
+  // Bridson: kast piler rundt aktive punkt, godta dei som held avstanden r.
+  function darts(w,h,r,rand,k=16){
+    const cell=r/Math.SQRT2,gw=Math.max(1,Math.ceil(w/cell)),gh=Math.max(1,Math.ceil(h/cell));
+    const grid=new Int32Array(gw*gh).fill(-1),pts=[],active=[];
+    const put=q=>{grid[Math.floor(q[1]/cell)*gw+Math.floor(q[0]/cell)]=pts.length;pts.push(q);active.push(pts.length-1)};
+    const free=q=>{
+      if(q[0]<0||q[0]>=w||q[1]<0||q[1]>=h)return false;
+      const i=Math.floor(q[0]/cell),j=Math.floor(q[1]/cell);
+      for(let jj=Math.max(0,j-2);jj<=Math.min(gh-1,j+2);jj++)
+        for(let ii=Math.max(0,i-2);ii<=Math.min(gw-1,i+2);ii++){
+          const idx=grid[jj*gw+ii];
+          if(idx>=0&&Math.hypot(pts[idx][0]-q[0],pts[idx][1]-q[1])<r)return false;
+        }
+      return true;
+    };
+    put([rand()*w,rand()*h]);
+    while(active.length){
+      const ai=Math.floor(rand()*active.length),p=pts[active[ai]];
+      let placed=false;
+      for(let t=0;t<k;t++){
+        const ang=rand()*Math.PI*2,d=r*(1+rand());
+        const q=[p[0]+Math.cos(ang)*d,p[1]+Math.sin(ang)*d];
+        if(free(q)){put(q);placed=true;break}
+      }
+      if(!placed)active.splice(ai,1);
+    }
+    return pts;
+  }
+  // Skrink radien til det er plass til alle, og legg dei ut i prosent av
+  // brettet. z følgjer y, så dei nedste står framfor — slik ei mengd ser ut.
+  function spread(n,ratio,rand){
+    const INSET=3;
+    // Finn ein radius som gir plass til alle, og hugs kva radius det blei.
+    let r=Math.sqrt(ratio/Math.max(1,n))*1.06,used=r,pts=[];
+    for(let i=0;i<9&&pts.length<n;i++,r*=.88){pts=darts(ratio,1,r,rand);used=r}
+    for(let i=pts.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[pts[i],pts[j]]=[pts[j],pts[i]]}
+    // Rein blå støy er mekanisk jamn — like langt til naboen overalt. Ei
+    // slingring på ein halv radius gir klyngjer og opningar slik folk faktisk
+    // står, utan å opne dei store tomme felta eit tilfeldig utval ville late
+    // etter seg. Halve radien er lite nok til at ingen blir heilt gøymd.
+    const j=used*.5,keep=used*.66,span=100-INSET*2;
+    const chosen=pts.slice(0,n);
+    // Slingringa må ikkje føre nokon oppå ein annan. Godta eit kast berre om
+    // det held minsteavstanden til alle andre; elles blir punktet ståande.
+    const near=(q,skip)=>chosen.some((o,k)=>k!==skip&&Math.hypot(o[0]-q[0],o[1]-q[1])<keep);
+    chosen.forEach((q,i)=>{
+      const a=rand()*Math.PI*2,d=rand()*j;
+      const t=[clamp(q[0]+Math.cos(a)*d,0,ratio),clamp(q[1]+Math.sin(a)*d,0,1)];
+      if(!near(t,i))chosen[i]=t;
+    });
+    return chosen
+      .map(q=>({x:q[0],y:q[1]}))
+      .map(q=>({x:INSET+q.x/ratio*span,y:INSET+q.y*span}))
+      .sort((a,b)=>a.y-b.y)
+      .map((q,i)=>({...q,z:1+i}));
+  }
+  // Sådd av runden, ikkje berre alderen: ein runde som blir vunnen før neste
+  // år-tikk skal ikkje kome tilbake i nøyaktig same plassering.
+  function layout(b,seed){
     const figs=[...b.querySelectorAll('img.crowd-figure')];if(!figs.length)return;
     assignUids(figs);
-    const r=b.getBoundingClientRect(),aspect=clamp(r.width/Math.max(1,r.height),.52,1.6),n=figs.length;
-    const cols=Math.max(3,Math.ceil(Math.sqrt(n*aspect))),rows=Math.ceil(n/cols),slots=[];
-    for(let rr=0;rr<rows;rr++)for(let c=0;c<cols;c++){
-      const seed=hash(`${a}|slot|${rr}|${c}`),jx=((seed&255)/255-.5)*.34,jy=(((seed>>>8)&255)/255-.5)*.30;
-      slots.push({x:(c+.5+jx)/cols*100,y:(rr+.5+jy)/rows*100,k:hash(`${a}|slotorder|${rr}|${c}`)});
-    }
-    slots.sort((x,y)=>x.k-y.k);
-    figs.sort((x,y)=>hash(`${a}|${x.dataset.fhUid}`)-hash(`${a}|${y.dataset.fhUid}`));
+    const r=b.getBoundingClientRect(),n=figs.length;
+    const ratio=clamp(r.width/Math.max(1,r.height),.3,3.2);
+    // Å trekkje punkta er for dyrt til å gjere kvar frame, og dei endrar seg
+    // berre når runden, folketalet eller brettforma gjer det.
+    const key=`${seed}|${n}|${ratio.toFixed(2)}`;
+    if(key!==st.layoutKey){st.layoutKey=key;st.points=spread(n,ratio,rng(key))}
+    const pts=st.points;if(!pts.length)return;
+    figs.sort((x,y)=>hash(`${seed}|${x.dataset.fhUid}`)-hash(`${seed}|${y.dataset.fhUid}`));
     st.pos.clear();
     figs.forEach((img,i)=>{
-      const s=slots[i%slots.length],king=img.classList.contains('harald-target');
+      const q=pts[i%pts.length],king=img.classList.contains('harald-target');
       const role=king?(parseFloat(img.style.getPropertyValue('--fh-harald-boost'))||1):(parseFloat(img.dataset.fhAssetScale)||1);
       img.dataset.fhSlot=String(i);
-      st.pos.set(i,{x:clamp(s.x,3,97),y:clamp(s.y,3,97),role,z:king?7:1+(hash(img.dataset.fhUid)%3)});
+      st.pos.set(i,{x:q.x,y:q.y,role,z:q.z});
     });
     paintSlots();
   }
@@ -84,7 +162,7 @@
   function dist(){const p=[...st.pointers.values()];return p.length<2?0:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)}
   function wire(b){if(b.dataset.fhWorldWired)return;b.dataset.fhWorldWired='1';b.addEventListener('pointerdown',e=>{if(b.dataset.fhNavigable!=='1')return;st.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,px:e.clientX,py:e.clientY});st.dragged=false;try{b.setPointerCapture?.(e.pointerId)}catch{}if(st.pointers.size===2){st.pinch0=dist();st.zoom0=st.userZoom}},{passive:true});b.addEventListener('pointermove',e=>{const p=st.pointers.get(e.pointerId);if(!p)return;const nx=e.clientX,ny=e.clientY,dx=nx-p.x,dy=ny-p.y;p.x=nx;p.y=ny;if(Math.hypot(nx-p.px,ny-p.py)>6)st.dragged=true;const r=b.getBoundingClientRect();if(st.pointers.size>=2){const d=dist();if(st.pinch0>0)st.userZoom=clamp(st.zoom0*d/st.pinch0,.82,1.85)}else if(st.dragged){st.panX+=dx/r.width*100;st.panY+=dy/r.height*100}schedule()},{passive:true});const end=e=>{st.pointers.delete(e.pointerId);if(st.pointers.size<2){st.pinch0=0;st.zoom0=st.userZoom}};b.addEventListener('pointerup',end,{passive:true});b.addEventListener('pointercancel',end,{passive:true});b.addEventListener('click',e=>{if(st.dragged){e.preventDefault();e.stopImmediatePropagation();st.dragged=false}},true)}
   function style(){if(document.getElementById('fh-world-style'))return;const s=document.createElement('style');s.id='fh-world-style';s.textContent=`
-    .crowd-board img.crowd-figure{position:absolute!important;right:auto!important;bottom:auto!important;--fh-render-scale:calc(var(--fh-role,1) * var(--fh-zoom,1));translate:calc(-50% + (var(--fh-x,50) - 50) / 100 * var(--fh-w,0px) * var(--fh-e1,0) + var(--fh-panx,0) / 100 * var(--fh-w,0px)) calc(-50% + (var(--fh-y,50) - 50) / 100 * var(--fh-h,0px) * var(--fh-e1,0) + var(--fh-pany,0) / 100 * var(--fh-h,0px))!important;scale:var(--fh-render-scale,1)!important;transform:none!important}.crowd-board[data-fh-navigable="1"]{touch-action:none!important;cursor:grab}.crowd-board[data-fh-navigable="1"]:active{cursor:grabbing}.crowd-board img.crowd-figure{transform-origin:center!important;transition:none!important;animation:none!important}.fh-nav-hud{position:absolute;right:8px;bottom:8px;z-index:30;display:flex;gap:7px;align-items:center;padding:6px 8px;border:1px solid #bdb4a5;border-radius:9px;background:#fffdf7e8;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;color:#5f594f}.fh-nav-hud span{font:800 7px/1 system-ui;letter-spacing:.13em}.fh-nav-hud b{font:600 12px/1 Georgia}.fh-nav-hud.hint span{font-size:8px}
+    .crowd-board img.crowd-figure{position:absolute!important;right:auto!important;bottom:auto!important;--fh-render-scale:calc(var(--fh-role,1) * var(--fh-zoom,1));translate:calc(-50% + (var(--fh-x,50) - 50) / 100 * var(--fh-w,0px) * var(--fh-e1,0) + var(--fh-panx,0) / 100 * var(--fh-w,0px)) calc(-50% + (var(--fh-y,50) - 50) / 100 * var(--fh-h,0px) * var(--fh-e1,0) + var(--fh-pany,0) / 100 * var(--fh-h,0px))!important;scale:var(--fh-render-scale,1)!important;transform:none!important}.crowd-board{position:relative!important;overflow:hidden!important}.crowd-board[data-fh-navigable="1"]{touch-action:none!important;cursor:grab}.crowd-board[data-fh-navigable="1"]:active{cursor:grabbing}.crowd-board img.crowd-figure{transform-origin:center!important;transition:none!important;animation:none!important}.fh-nav-hud{position:absolute;right:8px;bottom:8px;z-index:30;display:flex;gap:7px;align-items:center;padding:6px 8px;border:1px solid #bdb4a5;border-radius:9px;background:#fffdf7e8;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;color:#5f594f}.fh-nav-hud span{font:800 7px/1 system-ui;letter-spacing:.13em}.fh-nav-hud b{font:600 12px/1 Georgia}.fh-nav-hud.hint span{font-size:8px}
   `;document.head.appendChild(s)}
   style();schedule();new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,characterData:true});addEventListener('resize',schedule,{passive:true});visualViewport?.addEventListener('resize',schedule,{passive:true});window.__FH_WORLD__={schedule,advanceRound,population,get scale(){return difficulty(st.board?roundAge(st.board,age()):age())},get zoom(){return st.userZoom}};
 })();
