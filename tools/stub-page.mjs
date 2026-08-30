@@ -23,7 +23,13 @@ export const script = name =>
 // `squeezed` reproduces what a phone actually shows when the upstream shell
 // stops matching `.game-shell.fh-compact`: the board is left in a narrow,
 // centred column with wide gutters, instead of filling the screen.
-export function stubHtml({ age = 30, figures = 12, squeezed = false, tall = false } = {}) {
+// `renamed` is the situation the live game is actually in: the upstream board
+// and figures no longer carry the class names every one of our scripts keys
+// off, so all of them quietly do nothing.
+export function stubHtml({ age = 30, figures = 12, squeezed = false, tall = false, renamed = false } = {}) {
+  const boardClass = renamed ? 'stage-area' : 'crowd-board';
+  const figClass = renamed ? 'person' : 'crowd-figure';
+  const kingClass = renamed ? 'person' : 'crowd-figure harald-target';
   // `tall` makes the page overflow the screen the way it does on a phone when
   // the shell never becomes a fixed-height flex column: the board keeps its own
   // height and the footer is pushed off the bottom.
@@ -43,8 +49,8 @@ export function stubHtml({ age = 30, figures = 12, squeezed = false, tall = fals
   return `<!doctype html><meta charset="utf-8"><style>
     body{margin:0;font:14px system-ui}
     ${shell}
-    .crowd-board{${board}}
-    .crowd-board img{position:absolute;height:8.7%}
+    .${boardClass.split(' ')[0]}{${board}}
+    .${boardClass.split(' ')[0]} img{position:absolute;height:8.7%}
     .statrow{display:flex;gap:20px;padding:8px}
   </style>
   <div class="game-shell">
@@ -56,10 +62,10 @@ export function stubHtml({ age = 30, figures = 12, squeezed = false, tall = fals
       <div class="stat"><b>STREAK</b><span>3</span></div>
       <div class="stat"><b>FOLK</b><span>40</span></div>
     </div>
-    <div class="crowd-board">
-      <img class="crowd-figure harald-target" src="${PIXEL}" style="left:50%;top:50%">
+    <div class="${boardClass}">
+      <img class="${kingClass}" ${renamed ? 'alt="Kong Harald"' : ''} src="${PIXEL}" style="left:50%;top:50%">
       ${Array.from({ length: figures }, (_, i) =>
-        `<img class="crowd-figure" src="${PIXEL}" style="left:${8 + i * 7}%;top:${20 + (i % 4) * 18}%">`).join('')}
+        `<img class="${figClass}" src="${PIXEL}" style="left:${8 + i * 7}%;top:${20 + (i % 4) * 18}%">`).join('')}
     </div>
     <footer class="game-footer" style="padding:8px 0;font:12px system-ui;color:#6e695e">
       <div style="display:flex;justify-content:space-between">TID 1.0 s<span>FOLK 18</span></div>
