@@ -28,6 +28,9 @@
   // dei opphavlege figurane og Harald, og skriv style-attributtet på nytt ved
   // kvar render. Les vi derifrå, blir dei elementa hoppa over medan klonane
   // våre held fram — og då glir mengda frå kongen.
+  // Utlegget blir sådd av runden, ikkje berre alderen. Sådde vi berre på
+  // alderen, fekk ein runde som blei vunnen før neste år-tikk nøyaktig same
+  // plassering om att — og poenget er at mengda skal stokkast om for kvart funn.
   function layout(b,a){
     const figs=[...b.querySelectorAll('img.crowd-figure')];if(!figs.length)return;
     assignUids(figs);
@@ -62,7 +65,7 @@
   }
   function limits(e){const extra=Math.max(0,(e-1)*52);return{x:extra+8,y:extra+10}}
   function apply(){
-    st.queued=false;const b=document.querySelector('.crowd-board');if(!b)return;if(st.board!==b){st.board=b;st.panX=st.panY=0;st.userZoom=1;st.pointers.clear();st.roundKey=null;wire(b)}const a=age(),ra=roundAge(b,a);ensurePopulation(b,ra);layout(b,ra);
+    st.queued=false;const b=document.querySelector('.crowd-board');if(!b)return;if(st.board!==b){st.board=b;st.panX=st.panY=0;st.userZoom=1;st.pointers.clear();st.roundKey=null;wire(b)}const a=age(),ra=roundAge(b,a);ensurePopulation(b,ra);layout(b,`${roundKey(b)}|${ra}`);
     const base=difficulty(ra),e=base*st.userZoom,lim=limits(e);st.panX=clamp(st.panX,-lim.x,lim.x);st.panY=clamp(st.panY,-lim.y,lim.y);b.dataset.fhNavigable=base>1.015?'1':'0';document.documentElement.dataset.fhWorldScale=e.toFixed(2);
     // Éi transform-formel i CSS, mata av seks delte variablar på <html>. Alle
     // figurane reknar ut plasseringa si frå dei same tala, så mengda og kongen

@@ -54,24 +54,52 @@ const snapshot = () => page.evaluate(() => {
 });
 const count = () => page.$$eval('.crowd-board img.crowd-figure', els => els.length);
 
-const before = await snapshot(), beforeCount = await count();
+// Where world.js decided each figure belongs, independent of pan and zoom.
+// Comparing rendered rects here would pass on nothing but advanceRound()'s
+// recentring, which moves every figure without relaying anyone out.
+const placements = () => page.evaluate(() => {
+  const out = {};
+  document.querySelectorAll('.crowd-board img.crowd-figure').forEach(el => {
+    const cs = getComputedStyle(el);
+    out[el.dataset.fhUid] = `${cs.getPropertyValue('--fh-x').trim()}/${cs.getPropertyValue('--fh-y').trim()}`;
+  });
+  return out;
+});
+
+const before = await snapshot(), beforeCount = await count(), placedBefore = await placements();
 await page.evaluate(a => { document.querySelector('.age-lockup strong').textContent = String(a); }, AGE + 5);
 await page.waitForTimeout(400);
-const after = await snapshot(), afterCount = await count();
+const after = await snapshot(), afterCount = await count(), placedAfterTick = await placements();
 const moved = Object.keys(before).filter(k => before[k] !== after[k]).length;
 check('the crowd holds still while the age ticks', moved === 0, `${moved} of ${Object.keys(before).length} figures moved`);
 check('the head count holds still while the age ticks', beforeCount === afterCount, `${beforeCount} → ${afterCount}`);
 
-// Finding Harald starts a new round: fresh layout, and the view recentred.
-await page.evaluate(() => {
-  const b = document.querySelector('.crowd-board');
-  b.dataset.fhRealRound = String(Number(b.dataset.fhRealRound || 0) + 1);
-  window.__FH_WORLD__?.advanceRound?.();
-});
-await page.waitForTimeout(400);
-const next = await snapshot();
-const reshuffled = Object.keys(before).filter(k => next[k] && before[k] !== next[k]).length;
-check('a new round lays the crowd out afresh', reshuffled > 0, `${reshuffled} figures moved`);
+const drifted = Object.keys(placedBefore).filter(k => placedAfterTick[k] && placedAfterTick[k] !== placedBefore[k]).length;
+check('placements hold still while the age ticks', drifted === 0,
+  `${drifted} of ${Object.keys(placedBefore).length} re-placed`);
+
+await page.close();
+
+// Finding Harald starts a new round: everyone gets a new spot. This has to be
+// checked on an untouched age — the layout used to be seeded on the age alone,
+// so a round won before the next tick came back in the exact same arrangement.
+// Ticking the age first would change the seed and hide that entirely.
+page = await open({ images: true });
+let placed = await placements();
+for (const round of [1, 2, 3]) {
+  await page.evaluate(() => {
+    const b = document.querySelector('.crowd-board');
+    b.dataset.fhRealRound = String(Number(b.dataset.fhRealRound || 0) + 1);
+    window.__FH_WORLD__?.advanceRound?.();
+  });
+  await page.waitForTimeout(350);
+  const now = await placements();
+  const keys = Object.keys(placed).filter(k => now[k]);
+  const reshuffled = keys.filter(k => placed[k] !== now[k]).length;
+  check(`round ${round}: every figure gets a new placement`, reshuffled > keys.length * 0.9,
+    `${reshuffled} of ${keys.length} re-placed`);
+  placed = now;
+}
 await page.close();
 
 // With the image host unreachable Harald must still be findable. Left alone he
