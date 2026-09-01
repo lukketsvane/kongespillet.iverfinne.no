@@ -4,7 +4,7 @@
 // intercept those requests: once fulfilled, once failed outright. A round must
 // stay findable and stable in both cases.
 import { chromium } from 'playwright';
-import { CHROME, PNG, script, stubHtml, reporter } from './stub-page.mjs';
+import { CHROME, PNG, script, stubHtml, reporter, REBUILD_CROWD } from './stub-page.mjs';
 
 const AGE = 30;
 const { check, done } = reporter();
@@ -29,7 +29,7 @@ check('world.js exposes advanceRound',
   await page.evaluate(() => typeof window.__FH_WORLD__?.advanceRound === 'function'));
 
 const harald = () => page.evaluate(() => {
-  const el = document.querySelector('img.harald-target');
+  const el = document.querySelector('.harald-target');
   if (!el) return null;
   const cs = getComputedStyle(el);
   const r = el.getBoundingClientRect();
@@ -38,6 +38,12 @@ const harald = () => page.evaluate(() => {
 const shown = h => h && h.display !== 'none' && h.visibility !== 'hidden' && h.w > 0 && h.h > 0;
 
 check('Harald is visible when images load', shown(await harald()));
+
+// The king is upstream's own <button>, and every script that has to know which
+// figure he is has to find him there. Left unfound, the round never advances,
+// the crowd never moves and he never joins the pan.
+check('the king is laid out with the crowd',
+  await page.evaluate(() => document.querySelector('.harald-target')?.dataset.fhUid === 'harald'));
 
 // Positions must hold while the clock ticks: crowd-assets.js locks the sources
 // to the round, and the layout has to be locked to the same round.
@@ -80,42 +86,47 @@ check('placements hold still while the age ticks', drifted === 0,
 
 await page.close();
 
-// Finding Harald starts a new round: everyone gets a new spot. This has to be
-// checked on an untouched age — the layout used to be seeded on the age alone,
-// so a round won before the next tick came back in the exact same arrangement.
-// Ticking the age first would change the seed and hide that entirely.
+// Finding Harald starts a new round: everyone gets a new spot. React throws the
+// whole crowd away and builds it again with new keys, so the new figures arrive
+// as DOM nodes our scripts have never seen — that, not a click listener, is the
+// signal. The old listener watched for `img.harald-target`, which the game has
+// never had, so the round number never moved: one board, one head count and one
+// era for the whole game.
 page = await open({ images: true });
 let placed = await placements();
-for (const round of [1, 2, 3]) {
-  await page.evaluate(() => {
-    const b = document.querySelector('.crowd-board');
-    b.dataset.fhRealRound = String(Number(b.dataset.fhRealRound || 0) + 1);
-    window.__FH_WORLD__?.advanceRound?.();
-  });
-  await page.waitForTimeout(350);
+let round = await page.$eval('.crowd-board', el => el.dataset.fhRealRound);
+for (const n of [1, 2, 3]) {
+  await page.evaluate(REBUILD_CROWD);
+  await page.waitForTimeout(400);
+  const nowRound = await page.$eval('.crowd-board', el => el.dataset.fhRealRound);
+  check(`round ${n}: rebuilding the crowd counts as a new round`, nowRound !== round,
+    `${round} → ${nowRound}`);
+  round = nowRound;
   const now = await placements();
   const keys = Object.keys(placed).filter(k => now[k]);
   const reshuffled = keys.filter(k => placed[k] !== now[k]).length;
-  check(`round ${round}: every figure gets a new placement`, reshuffled > keys.length * 0.9,
+  check(`round ${n}: every figure gets a new placement`, reshuffled > keys.length * 0.9,
     `${reshuffled} of ${keys.length} re-placed`);
   placed = now;
 }
 await page.close();
 
-// With the image host unreachable Harald must still be findable. Left alone he
-// is hidden outright; the mutation churn from world.js happens to un-hide him
-// again, but only as an empty box with nothing drawn in it. Either way the
-// player cannot see the one thing the round asks them to find, so the fallback
-// has to be a deliberate visible marker rather than whatever the browser makes
-// of a broken <img>.
+// With the image host unreachable the round must still be findable. Harald's own
+// portrait comes from the game's own origin, not the crowd's image host, so he
+// survives it — but the crowd must not be left as a field of broken boxes, and
+// the figures that do come back have to be real people.
 page = await open({ images: false });
 await page.waitForTimeout(3000);
 const broken = await harald();
-const marked = await page.evaluate(() =>
-  document.querySelector('img.harald-target')?.classList.contains('fh-harald-placeholder') === true);
 check('Harald is still on the board when the image host is dead', shown(broken),
   broken ? `display:${broken.display} ${Math.round(broken.w)}x${Math.round(broken.h)}` : 'no target');
-check('Harald falls back to a drawn marker, not a broken image', marked);
+// A figure whose image will not load is hidden and given another one to try,
+// rather than left as a visible empty box in the middle of the crowd.
+const retrying = await page.evaluate(() =>
+  [...document.querySelectorAll('.crowd-board img.crowd-figure')]
+    .filter(el => Number(el.dataset.fhRetries || 0) > 0).length);
+check('the crowd keeps trying other pictures instead of standing empty',
+  retrying > 0, `${retrying} figures retrying`);
 await page.close();
 
 await browser.close();

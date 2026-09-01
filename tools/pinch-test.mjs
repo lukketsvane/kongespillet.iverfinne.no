@@ -26,9 +26,11 @@ await page.addScriptTag({ content: script('world.js') });
 await page.waitForTimeout(600);
 
 // Where every figure sits on screen, keyed by the uid world.js assigns.
+// The king included — he is a <button>, not an <img>, and leaving him out of
+// this is exactly how he came to drift away from the crowd under a pinch.
 const positions = () => page.evaluate(() => {
   const out = {};
-  document.querySelectorAll('.crowd-board img.crowd-figure').forEach(el => {
+  document.querySelectorAll('.crowd-board img.crowd-figure,.crowd-board .harald-target').forEach(el => {
     const r = el.getBoundingClientRect();
     out[el.dataset.fhUid] = [r.x + r.width / 2, r.y + r.height / 2];
   });
@@ -39,7 +41,7 @@ check('panning is enabled at age ' + AGE,
   await page.$eval('.crowd-board', el => el.dataset.fhNavigable) === '1');
 
 const king = await page.evaluate(() =>
-  document.querySelector('img.harald-target')?.dataset.fhUid);
+  document.querySelector('.harald-target')?.dataset.fhUid);
 check('the king is laid out with the crowd', !!king, `uid: ${king}`);
 
 const before = await positions();
@@ -48,7 +50,7 @@ const before = await positions();
 // It owns the upstream figures and the king, not world.js's clones.
 const wiped = await page.evaluate(() => {
   let n = 0;
-  document.querySelectorAll('.crowd-board img.crowd-figure').forEach(el => {
+  document.querySelectorAll('.crowd-board img.crowd-figure,.crowd-board .harald-target').forEach(el => {
     if (el.classList.contains('fh-extra-crowd')) return;   // world.js's own clone
     el.setAttribute('style', '');                          // what React does
     n++;

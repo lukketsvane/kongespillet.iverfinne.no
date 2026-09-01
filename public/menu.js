@@ -1,21 +1,26 @@
 (()=>{
-  const state={menuOpen:false};
+  // React hydrerer heile dokumentet etter at skripta våre har køyrt, og kastar
+  // det den ikkje kjenner att i <body> — mellom anna denne menyen, om lag eit
+  // sekund etter at han er lagt inn. Framsida blinka til og var borte, og
+  // pause-vaktposten vart ståande att åleine: usynleg, men nok til at
+  // enhance.js trudde spelet var i pause resten av økta.
+  const state={menuOpen:false,inGame:false,revives:0};
   function pauseSentinel(on){if(on){if(!document.querySelector('.fh-menu-pause-sentinel')){const e=document.createElement('i');e.className='fh-modal fh-menu-pause-sentinel';e.hidden=true;document.body.appendChild(e)}}else document.querySelector('.fh-menu-pause-sentinel')?.remove()}
   function leaderboard(){document.querySelector('.fh-top')?.click()}
   function showMenu(inGame=false){
-    document.querySelector('.fhm-overlay')?.remove();state.menuOpen=true;if(inGame)pauseSentinel(true);
+    document.querySelector('.fhm-overlay')?.remove();state.menuOpen=true;state.inGame=inGame;if(inGame)pauseSentinel(true);
     const el=document.createElement('div');el.className='fhm-overlay';
     el.innerHTML=`<section class="fhm-card">
       ${inGame?'<button class="fhm-x" type="button" aria-label="Lukk">×</button>':''}
       <div class="fhm-hero"><img class="fhm-king" src="/game-assets/harald/05_wave.png" alt="Kong Harald vinkar"><img class="fhm-crown" src="/game-assets/ui/crown.png" alt=""></div>
       <div class="fhm-copy"><span class="fhm-kicker">KONGESPELET</span><h1>Finn Harald!</h1><p>Han eldst medan du leitar.</p>
-        <div class="fhm-competition"><b>SAME REGLAR FOR ALLE</b><span>Éin konkurransemodus · alderen først · score ved lik alder</span></div>
-        <div class="fhm-rules"><span><b>1</b> Finn kongen</span><span><b>2</b> Feilklikk kostar år</span><span><b>3</b> Bygg streak</span><span><b>4</b> Panorer og knip når verda veks</span></div>
+        <div class="fhm-competition"><b>SAME REGLAR FOR ALLE</b><span>Éin konkurransemodus · alderen først · tida ved lik alder</span></div>
+        <div class="fhm-rules"><span><b>1</b> Finn kongen</span><span><b>2</b> Feilklikk kostar år</span><span><b>3</b> Han gøymer seg betre for kvart år</span><span><b>4</b> Panorer og knip når torget veks</span></div>
         <div class="fhm-actions"><button class="fhm-play" type="button">${inGame?'FORTSETT':'START SPELET'}</button>${inGame?'<button class="fhm-restart" type="button">START PÅ NYTT</button>':''}<button class="fhm-board" type="button">VERDSLISTE</button></div>
       </div>
     </section>`;
     document.body.appendChild(el);
-    const close=()=>{el.remove();state.menuOpen=false;pauseSentinel(false)};
+    const close=()=>{el.remove();state.menuOpen=false;state.revives=0;pauseSentinel(false)};
     el.querySelector('.fhm-x')?.addEventListener('click',close);
     el.querySelector('.fhm-play').onclick=()=>{if(inGame)return close();sessionStorage.setItem('fhm-start','1');location.reload()};
     el.querySelector('.fhm-restart')?.addEventListener('click',()=>{sessionStorage.setItem('fhm-start','1');location.reload()});
@@ -27,6 +32,6 @@
     .fhm-overlay{position:fixed;inset:0;z-index:99990;background:#f6f2e9fa;display:grid;place-items:center;padding:max(14px,env(safe-area-inset-top)) 14px max(14px,env(safe-area-inset-bottom));overflow:auto}.fhm-card{position:relative;width:min(900px,96vw);min-height:min(620px,90vh);display:grid;grid-template-columns:minmax(230px,.55fr) minmax(0,1fr);border:1px solid #cfc6b5;border-radius:24px;background:#fffdf7;box-shadow:0 24px 80px #3d33251f;overflow:hidden}.fhm-hero{position:relative;display:grid;place-items:end center;background:linear-gradient(#f7efc7,#e8dfcb);overflow:hidden}.fhm-hero:after{content:'';position:absolute;left:-25%;right:-25%;bottom:7%;height:37%;border-radius:50%;background:#a9c99466}.fhm-king{position:relative;z-index:2;max-width:72%;max-height:76%;object-fit:contain;filter:drop-shadow(0 14px 15px #5b4b3725)}.fhm-crown{position:absolute;z-index:3;right:22px;top:20px;width:44px;transform:rotate(7deg)}.fhm-copy{padding:clamp(30px,6vw,74px);display:flex;flex-direction:column;justify-content:center}.fhm-kicker{font:800 10px/1 system-ui;letter-spacing:.3em;color:#887f71}.fhm-copy h1{font:500 clamp(58px,8vw,94px)/.88 Georgia,serif;letter-spacing:-.05em;margin:12px 0 8px}.fhm-copy>p{font:italic 20px/1.2 Georgia,serif;color:#6d665b;margin:0 0 22px}.fhm-competition{border-block:1px solid #d9d1c0;padding:11px 0;margin-bottom:18px}.fhm-competition b,.fhm-competition span{display:block}.fhm-competition b{font:800 10px/1 system-ui;letter-spacing:.16em}.fhm-competition span{font:italic 13px/1.3 Georgia;color:#756f64;margin-top:5px}.fhm-rules{display:flex;flex-wrap:wrap;gap:9px 15px;margin-bottom:22px;font:650 11px/1.2 system-ui;color:#504a41}.fhm-rules span{display:flex;align-items:center;gap:7px}.fhm-rules b{display:grid;place-items:center;width:21px;height:21px;border:1px solid #9e9587;border-radius:50%;font-size:9px}.fhm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fhm-actions button{min-height:49px;border-radius:13px;font:800 11px/1 system-ui;letter-spacing:.12em}.fhm-play{grid-column:1/-1;background:#1e1d1a;color:#fff;border:1px solid #1e1d1a}.fhm-restart,.fhm-board{background:#fffdf7;color:#4f493f;border:1px solid #bdb4a5}.fhm-x{position:absolute;z-index:6;right:10px;top:8px;width:42px;height:42px;border:0;background:transparent;font:34px/1 Georgia;color:#5f594f}
     @media(max-width:700px){.fhm-menu-button{left:3px;bottom:-9px;width:27px;height:27px;padding:5px}.fhm-overlay{padding:8px 8px max(8px,env(safe-area-inset-bottom))}.fhm-card{width:100%;min-height:calc(100dvh - 16px);grid-template-columns:1fr;border-radius:20px}.fhm-hero{min-height:25dvh;max-height:29dvh}.fhm-king{max-width:43%;max-height:90%}.fhm-crown{width:35px;right:16px;top:14px}.fhm-copy{padding:24px 20px 20px;justify-content:flex-start}.fhm-copy h1{font-size:clamp(52px,16vw,72px);margin-top:8px}.fhm-copy>p{font-size:17px;margin-bottom:15px}.fhm-competition{margin-bottom:14px}.fhm-rules{margin-bottom:16px}.fhm-actions{grid-template-columns:1fr}.fhm-play,.fhm-restart,.fhm-board{grid-column:1}.fhm-actions button{min-height:50px}}
   `;document.head.appendChild(s)}
-  function initial(){style();menuButton();if(sessionStorage.getItem('fhm-start')==='1')sessionStorage.removeItem('fhm-start');else showMenu(false);setInterval(()=>{menuButton();if(state.menuOpen&&!document.querySelector('.fh-modal')&&!document.querySelector('.fh-menu-pause-sentinel'))pauseSentinel(true)},300)}
+  function initial(){style();menuButton();if(sessionStorage.getItem('fhm-start')==='1')sessionStorage.removeItem('fhm-start');else showMenu(false);setInterval(()=>{menuButton();if(!state.menuOpen)return;if(!document.querySelector('.fhm-overlay')&&state.revives<12){state.revives++;return showMenu(state.inGame)}if(state.inGame&&!document.querySelector('.fh-menu-pause-sentinel'))pauseSentinel(true)},300)}
   document.readyState==='loading'?addEventListener('DOMContentLoaded',initial,{once:true}):initial();
 })();

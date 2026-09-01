@@ -86,11 +86,15 @@ for (const age of [0, 30, 60, 89]) {
     `closest pair ${min.toFixed(0)}px, figures ${w.toFixed(0)}px wide`);
 }
 
-// The point of the whole model: the world grows, the density does not.
+// The point of the whole model: the screen fills up as he ages, and the world
+// grows underneath it. Before, the density was held constant and only the area
+// grew — and since the round never advanced, neither ever moved: 66 people on
+// one screen from 1937 until the crown fell off.
 const counts = seen.map(s => s.onScreen);
-const lo = Math.min(...counts), hi = Math.max(...counts);
-check('a screenful stays as full at 89 as at 0', hi - lo < hi * 0.45,
+check('the screenful fills up as he ages', counts[3] > counts[0] * 2,
   seen.map(s => `${s.age}y: ${s.onScreen}/${s.total}`).join('  '));
+check('and never thins out again', Math.min(...counts.slice(1)) >= counts[1] * 0.8,
+  counts.join(' → '));
 check('the crowd grows with the world', seen[3].total > seen[0].total * 2,
   `${seen[0].total} → ${seen[3].total} figures`);
 

@@ -1,6 +1,5 @@
 (()=>{
   function style(){if(document.getElementById('fh-crowd-fix-style'))return;const s=document.createElement('style');s.id='fh-crowd-fix-style';s.textContent=`
-    .crowd-board,.crowd-board img.crowd-figure{filter:none!important}
     .crowd-board img.crowd-figure{animation:none!important;transition:none!important}
   `;document.head.appendChild(s)}
   let queued=false;
