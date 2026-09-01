@@ -8,7 +8,23 @@ const CROWD_MARKER = 'Math.round(n*5),3,145);return{targetSize';
 const CROWD_PATCH = 'Math.round(n*2),8,28);return{targetSize';
 const BUILD = '20260901-difficulty1';
 
-export const config = { matcher: ['/', '/assets/page-:path*'] };
+// Heile /assets, ikkje berre `page-`: eit mønster med literal tekst midt i eit
+// segment er lett å ta feil av, og tek det ikkje, køyrer ikkje middlewaren i det
+// heile — bundelen går rett gjennom omskrivinga, ulappa og utan eit einaste
+// spor i svarhovudet. Filteret står i koden under i staden.
+export const config = { matcher: ['/', '/assets/:path*'] };
+
+// Fall-through med spor. `x-fh-bundle` seier kvifor lappane ikkje vart brukte,
+// så README-en sin «sjekk dei to etter ei utrulling» kan skilje mellom «lappen
+// mangla» og «middlewaren såg aldri fila».
+function unpatched(reason) {
+  const res = NextResponse.next();
+  res.headers.set('x-fh-build', BUILD);
+  res.headers.set('x-fh-bundle', reason);
+  res.headers.set('x-fh-render-patch', '0');
+  res.headers.set('x-fh-crowd-base-cap', '0');
+  return res;
+}
 
 async function patchGameBundle(request) {
   try {
@@ -16,7 +32,7 @@ async function patchGameBundle(request) {
       headers: { accept: 'text/javascript,application/javascript,*/*;q=0.1', 'user-agent': request.headers.get('user-agent') || 'Mozilla/5.0' },
       cache: 'no-store',
     });
-    if (!upstream.ok) return NextResponse.next();
+    if (!upstream.ok) return unpatched(`upstream-${upstream.status}`);
     const source = await upstream.text();
     let patched = source;
     if (patched.includes(RENDER_MARKER)) patched = patched.replace(RENDER_MARKER, RENDER_PATCH);
@@ -27,8 +43,9 @@ async function patchGameBundle(request) {
     headers.set('x-fh-render-patch', patched.includes(RENDER_PATCH) ? '1' : '0');
     headers.set('x-fh-crowd-base-cap', patched.includes(CROWD_PATCH) ? '28' : '0');
     headers.set('x-fh-build', BUILD);
+    headers.set('x-fh-bundle', 'patched');
     return new Response(patched, { status: 200, headers });
-  } catch { return NextResponse.next(); }
+  } catch (e) { return unpatched('fetch-failed'); }
 }
 
 function bustGameBundle(html) {
@@ -51,7 +68,7 @@ export async function middleware(request) {
   if (!accept.includes('text/html')) return NextResponse.next();
   try {
     const upstream = await fetch(ORIGIN, { headers: { accept: 'text/html,application/xhtml+xml', 'user-agent': request.headers.get('user-agent') || 'Mozilla/5.0' }, cache: 'no-store' });
-    if (!upstream.ok) return NextResponse.next();
+    if (!upstream.ok) return unpatched(`upstream-${upstream.status}`);
     let html = iOSHead(bustGameBundle(await upstream.text()));
     const tags = [
       `<script src="/board.js?v=${BUILD}" defer></script>`,

@@ -72,6 +72,13 @@ sine før dei blir brukte, så ei ny bundel utan markørane gir uendra kode i
 staden for øydelagd kode — men då er lappen borte, og `x-fh-render-patch` /
 `x-fh-crowd-base-cap` i svarhovudet blir `0`. Sjekk dei to etter ei utrulling.
 
+`x-fh-bundle` seier kvifor: `patched`, `upstream-<status>` eller `fetch-failed`.
+Kjem det ikkje eit einaste `x-fh`-hovud på bundelen, såg middlewaren aldri fila
+— då er det `matcher` som ikkje tek, og svaret kjem rett frå omskrivinga i
+`next.config.mjs`, ulappa og heilt stille. Spelet toler det (`world.js` set
+folketalet uansett, og oppstraums sitt eige tal ligg alltid under vårt), men
+lappane gjer ingenting.
+
 ## Reglane
 
 * Éin konkurransemodus. Same reglar for alle.
